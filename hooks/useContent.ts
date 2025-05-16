@@ -1,273 +1,224 @@
-import { useState, useEffect, useCallback } from 'react';
-import { pb, ContentType, getCollectionForType } from '@/utils/pb';
-import { ContentUnion, Tag } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from "@/contexts/AuthContext";
+import { pb } from "@/globalConfig";
+import { ContentItem, Tag } from "@/types";
+import { deleteContent, getAllContents, saveContent } from "@/utils/pocketbase";
+import { useCallback, useEffect, useState } from "react";
 
 interface ContentHookResult {
-  items: ContentUnion[];
+  items: ContentItem[];
   tags: Tag[];
   isLoading: boolean;
   error: string | null;
-  fetchContent: (type?: ContentType) => Promise<void>;
+  fetchContent: () => Promise<void>;
   searchContent: (query: string) => Promise<void>;
-  addContent: (type: ContentType, data: any, file?: File) => Promise<void>;
-  deleteContent: (type: ContentType, id: string) => Promise<void>;
+  addContent: (data: ContentItem, file?: File) => Promise<void>;
+  deleteContent: (id: string) => Promise<void>;
 }
 
 export function useContent(): ContentHookResult {
-  const [items, setItems] = useState<ContentUnion[]>([]);
+  const [items, setItems] = useState<ContentItem[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { isSignedIn, user } = useAuth();
 
-  const fetchContent = useCallback(async (type?: ContentType) => {
+  const fetchContents = useCallback(async () => {
+    console.log("--- fetchContents");
     try {
       setIsLoading(true);
       setError(null);
 
-      let result: ContentUnion[] = [];
-
-      // If a specific type is provided, only fetch that type
-      if (type) {
-        const collection = getCollectionForType(type);
-        const records = await pb.collection(collection).getList(1, 50, {
-          sort: '-created',
-          filter: isSignedIn ? `user = "${user?.id}"` : '',
-          expand: 'tags',
-        });
-        
-        result = records.items.map((item) => ({
-          ...item,
-          type,
-        })) as ContentUnion[];
-      } else {
-        // Fetch all content types
-        const types = Object.values(ContentType);
-        
-        for (const contentType of types) {
-          const collection = getCollectionForType(contentType);
-          const records = await pb.collection(collection).getList(1, 10, {
-            sort: '-created',
-            filter: isSignedIn ? `user = "${user?.id}"` : '',
-            expand: 'tags',
-          });
-          
-          const typedRecords = records.items.map((item) => ({
-            ...item,
-            type: contentType,
-          })) as ContentUnion[];
-          
-          result = [...result, ...typedRecords];
-        }
-        
-        // Sort all items by created date
-        result.sort((a, b) => 
-          new Date(b.created).getTime() - new Date(a.created).getTime()
-        );
-      }
-
+      const result = await getAllContents();
+      console.log("result", result);
       // Fetch tags
-      const tagsResult = await pb.collection('tags').getList(1, 50, {
-        sort: 'name',
-      });
-      
-      setItems(result);
-      setTags(tagsResult.items as Tag[]);
-    } catch (error) {
-      console.error('Error fetching content:', error);
-      setError('Failed to load content. Please try again.');
+      // const tagsResult = await pb.collection("contents").getList(1, 50, {
+      //   sort: "name",
+      // });
+
+      // Convert PocketBase records to Tag objects
+      // const tags = tagsResult.items.map((record) => ({
+      //   id: record.id,
+      //   name: record.name,
+      //   count: record.count || 0,
+      // })) as Tag[];
+
+      // setItems(result);
+      // setTags(tags);
+    } catch (error: any) {
+      console.error("Error fetching content:", error, error.originalError);
+      setError("Failed to load content. Please try again.");
     } finally {
       setIsLoading(false);
     }
   }, [isSignedIn, user]);
 
-  const searchContent = useCallback(async (query: string) => {
-    if (!query.trim()) {
-      return fetchContent();
-    }
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      let result: ContentUnion[] = [];
-      const types = Object.values(ContentType);
-      
-      for (const type of types) {
-        const collection = getCollectionForType(type);
-        let filter = '';
-        
-        // Build different search filters based on content type
-        switch (type) {
-          case ContentType.VIDEO:
-            filter = `title ~ "${query}" || url ~ "${query}" || comment ~ "${query}"`;
-            break;
-          case ContentType.MEME:
-            filter = `category ~ "${query}"`;
-            break;
-          case ContentType.NEWS:
-            filter = `title ~ "${query}" || summary ~ "${query}" || url ~ "${query}"`;
-            break;
-          case ContentType.WEBSITE:
-            filter = `name ~ "${query}" || url ~ "${query}" || category ~ "${query}"`;
-            break;
-          case ContentType.IMAGE:
-            filter = `description ~ "${query}"`;
-            break;
-        }
-        
-        // Add user filter if signed in
-        if (isSignedIn && user) {
-          filter = filter ? `(${filter}) && user = "${user.id}"` : `user = "${user.id}"`;
-        }
-        
-        const records = await pb.collection(collection).getList(1, 20, {
-          sort: '-created',
-          filter,
-        });
-        
-        const typedRecords = records.items.map((item) => ({
-          ...item,
-          type,
-        })) as ContentUnion[];
-        
-        result = [...result, ...typedRecords];
+  const searchContent = useCallback(
+    async (query: string) => {
+      if (!query.trim()) {
+        return fetchContents();
       }
-      
-      // Also search by tags
-      const tagsResult = await pb.collection('tags').getList(1, 20, {
-        filter: `name ~ "${query}"`,
-      });
-      
-      for (const tag of tagsResult.items) {
-        for (const type of types) {
-          const collection = getCollectionForType(type);
-          let filter = `tags ~ "${tag.id}"`;
-          
-          if (isSignedIn && user) {
-            filter = `${filter} && user = "${user.id}"`;
-          }
-          
-          const records = await pb.collection(collection).getList(1, 10, {
-            filter,
-          });
-          
-          const typedRecords = records.items.map((item) => ({
-            ...item,
-            type,
-          })) as ContentUnion[];
-          
-          // Add only non-duplicate items
-          for (const record of typedRecords) {
-            if (!result.some(r => r.id === record.id && r.type === record.type)) {
-              result.push(record);
+
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const userId = user?.id;
+
+        if (!userId) {
+          throw new Error("User not authenticated");
+        }
+
+        // Search in contents collection
+        const records = await pb.collection("contents").getList(1, 100, {
+          filter: `user = "${userId}" && (title ~ "${query}" || description ~ "${query}" || summary ~ "${query}" || comment ~ "${query}" || category ~ "${query}")`,
+          sort: "-created",
+        });
+        // Convert records to ContentItems
+        const items: ContentItem[] = records.items.map((record) => ({
+          id: record.id,
+          type: record.type,
+          url: record.url,
+          title: record.title,
+          created: record.created,
+          updated: record.updated,
+          imageUrl: record.imageUrl,
+          description: record.description,
+          summary: record.summary,
+          comment: record.comment,
+          category: record.category,
+          tags: record.tags,
+          createdAt: record.createdAt || record.created,
+          user: record.user,
+        }));
+
+        // Also search by tags
+        const tagsResult = await pb.collection("tags").getList(1, 20, {
+          filter: `name ~ "${query}"`,
+        });
+
+        // Get content items with matching tags
+        for (const tag of tagsResult.items) {
+          const taggedRecords = await pb
+            .collection("contents")
+            .getList(1, 100, {
+              filter: `user = "${userId}" && tags ~ "${tag.id}"`,
+              sort: "-created",
+            });
+
+          // Add non-duplicate items
+          for (const record of taggedRecords.items) {
+            if (!items.some((item) => item.id === record.id)) {
+              items.push({
+                id: record.id,
+                type: record.type,
+                url: record.url,
+                title: record.title,
+                imageUrl: record.imageUrl,
+                description: record.description,
+                summary: record.summary,
+                comment: record.comment,
+                category: record.category,
+                tags: record.tags,
+                created: record.created,
+                updated: record.updated,
+                // createdAt: record.createdAt || record.created,
+                user: record.user,
+              });
             }
           }
         }
+
+        // Sort by relevance and date
+        items.sort((a, b) => {
+          const aMatch = JSON.stringify(a)
+            .toLowerCase()
+            .includes(query.toLowerCase());
+          const bMatch = JSON.stringify(b)
+            .toLowerCase()
+            .includes(query.toLowerCase());
+
+          if (aMatch && !bMatch) return -1;
+          if (!aMatch && bMatch) return 1;
+
+          // If both match or don't match, sort by created date
+          return new Date(b.created).getTime() - new Date(a.created).getTime();
+        });
+
+        setItems(items);
+      } catch (error) {
+        console.error("Error searching content:", error);
+        setError("Failed to search content. Please try again.");
+      } finally {
+        setIsLoading(false);
       }
-      
-      // Sort results by relevance (this is a simple implementation)
-      result.sort((a, b) => {
-        const aMatch = JSON.stringify(a).toLowerCase().includes(query.toLowerCase());
-        const bMatch = JSON.stringify(b).toLowerCase().includes(query.toLowerCase());
-        
-        if (aMatch && !bMatch) return -1;
-        if (!aMatch && bMatch) return 1;
-        
-        // If both match or don't match, sort by created date
-        return new Date(b.created).getTime() - new Date(a.created).getTime();
-      });
-      
-      setItems(result);
-    } catch (error) {
-      console.error('Error searching content:', error);
-      setError('Failed to search content. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchContent, isSignedIn, user]);
+    },
+    [fetchContents, isSignedIn, user]
+  );
 
-  const addContent = useCallback(async (type: ContentType, data: any, file?: File) => {
-    if (!isSignedIn || !user) {
-      setError('You must be signed in to save content');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const collection = getCollectionForType(type);
-      const formData = new FormData();
-
-      // Add user ID
-      const contentData = {
-        ...data,
-        user: user.id,
-      };
-
-      // Handle file upload if present
-      if (file) {
-        formData.append('file', file);
+  const addContent = useCallback(
+    async (data: ContentItem, file?: File) => {
+      if (!isSignedIn || !user) {
+        setError("You must be signed in to save content");
+        return;
       }
 
-      // Add data as JSON
-      Object.keys(contentData).forEach(key => {
-        if (key !== 'file') {
-          formData.append(key, contentData[key]);
-        }
-      });
+      try {
+        setIsLoading(true);
+        setError(null);
 
-      // Create record
-      await pb.collection(collection).create(formData);
+        // Save content
+        await saveContent(data);
 
-      // Refresh content
-      await fetchContent();
-    } catch (error) {
-      console.error('Error adding content:', error);
-      setError('Failed to save content. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchContent, isSignedIn, user]);
+        // Refresh content
+        await fetchContents();
+      } catch (error) {
+        console.error("Error adding content:", error);
+        setError("Failed to save content. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [fetchContents, isSignedIn, user]
+  );
 
-  const deleteContent = useCallback(async (type: ContentType, id: string) => {
-    if (!isSignedIn) {
-      setError('You must be signed in to delete content');
-      return;
-    }
+  const handleDeleteContent = useCallback(
+    async (id: string) => {
+      if (!isSignedIn) {
+        setError("You must be signed in to delete content");
+        return;
+      }
 
-    try {
-      setIsLoading(true);
-      setError(null);
+      try {
+        setIsLoading(true);
+        setError(null);
 
-      const collection = getCollectionForType(type);
-      await pb.collection(collection).delete(id);
+        // Delete content
+        await deleteContent(id);
 
-      // Refresh content
-      await fetchContent();
-    } catch (error) {
-      console.error('Error deleting content:', error);
-      setError('Failed to delete content. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchContent, isSignedIn]);
+        // Refresh content
+        await fetchContents();
+      } catch (error) {
+        console.error("Error deleting content:", error);
+        setError("Failed to delete content. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [fetchContents, isSignedIn]
+  );
 
-  // Fetch content on mount
   useEffect(() => {
-    fetchContent();
-  }, [fetchContent]);
+    fetchContents();
+  }, []);
 
   return {
     items,
     tags,
     isLoading,
     error,
-    fetchContent,
+    fetchContent: fetchContents,
     searchContent,
     addContent,
-    deleteContent,
+    deleteContent: handleDeleteContent,
   };
 }

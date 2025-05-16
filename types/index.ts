@@ -5,6 +5,34 @@ export interface User {
   avatar?: string;
   created: string;
   updated: string;
+  collectionId: string;
+  collectionName: string;
+  expand: Record<string, any>;
+}
+
+export interface ContentItem {
+  id: string;
+  type: "Video" | "Meme" | "News" | "Website" | "Image";
+  url?: string;
+  title?: string;
+  imageUrl?: string;
+  description?: string;
+  summary?: string;
+  comment?: string;
+  category?: string;
+  tags: string[];
+  created: string;
+  updated: string;
+  user: string;
+}
+
+export interface FileItem {
+  id: string;
+  file: string;
+  folder?: string;
+  user: string;
+  created: string;
+  updated: string;
 }
 
 export interface BaseContent {
@@ -23,7 +51,7 @@ export interface VideoContent extends BaseContent {
 
 export interface MemeContent extends BaseContent {
   imageUrl: string;
-  file?: string;  // PocketBase file reference
+  file?: string; // PocketBase file reference
   category: string;
 }
 
@@ -41,7 +69,7 @@ export interface WebsiteContent extends BaseContent {
 
 export interface ImageContent extends BaseContent {
   imageUrl?: string;
-  file?: string;  // PocketBase file reference
+  file?: string; // PocketBase file reference
   description: string;
 }
 
@@ -51,11 +79,11 @@ export interface Tag {
   count: number;
 }
 
-export type ContentUnion = 
-  | VideoContent 
-  | MemeContent 
-  | NewsContent 
-  | WebsiteContent 
+export type ContentUnion =
+  | VideoContent
+  | MemeContent
+  | NewsContent
+  | WebsiteContent
   | ImageContent;
 
 export interface AuthState {

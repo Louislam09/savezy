@@ -1,17 +1,18 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
-import { Platform } from 'react-native';
-import { pb } from '@/utils/pb';
-import { AuthState, User } from '@/types';
+import { pb } from "@/globalConfig";
+import { AuthState, User } from "@/types";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as AuthSession from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const AUTH_STORAGE_KEY = 'content-saver-auth';
+const AUTH_STORAGE_KEY = "savezy-auth";
+// const REDIRECT_URI = "savezy://redirect";
 
 interface AuthContextType extends AuthState {
   signIn: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -26,23 +27,32 @@ const initialState: AuthState = {
 const AuthContext = createContext<AuthContextType>({
   ...initialState,
   signIn: async () => {},
+  signInWithEmail: async () => {},
   signOut: async () => {},
   refreshUser: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>(initialState);
+  const REDIRECT_URI = AuthSession.makeRedirectUri();
 
-  // Load auth state from storage on mount
+  // Initialize WebBrowser
+  useEffect(() => {
+    WebBrowser.warmUpAsync();
+    return () => {
+      WebBrowser.coolDownAsync();
+    };
+  }, []);
+
   useEffect(() => {
     const loadAuthState = async () => {
       try {
         const storedAuth = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
-        
+        console.log("storedAuth", storedAuth);
         if (storedAuth) {
           const parsedAuth = JSON.parse(storedAuth);
           pb.authStore.save(parsedAuth.token, parsedAuth.model);
-          
+
           if (pb.authStore.isValid) {
             setState({
               isLoading: false,
@@ -67,12 +77,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         }
       } catch (error) {
-        console.error('Error loading auth state:', error);
+        console.error("Error loading auth state:", error);
         setState({
           isLoading: false,
           isSignedIn: false,
           user: null,
-          error: 'Failed to load authentication state',
+          error: "Failed to load authentication state",
         });
       }
     };
@@ -80,23 +90,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loadAuthState();
   }, []);
 
-  // Save auth state to storage when it changes
   useEffect(() => {
+    console.log("state.isSignedIn", state.isSignedIn);
     const saveAuthState = async () => {
       try {
         if (state.isSignedIn && pb.authStore.isValid) {
+          console.log("Saving auth state...", {
+            token: pb.authStore.token,
+            model: pb.authStore.record,
+          });
           await AsyncStorage.setItem(
             AUTH_STORAGE_KEY,
             JSON.stringify({
               token: pb.authStore.token,
-              model: pb.authStore.model,
+              model: pb.authStore.record,
             })
           );
         } else if (!state.isSignedIn) {
           await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
         }
       } catch (error) {
-        console.error('Error saving auth state:', error);
+        console.error("Error saving auth state:", error);
       }
     };
 
@@ -105,60 +119,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.isSignedIn, state.user]);
 
-  const signIn = async () => {
+  const performGoogleSignIn = async () => {
     try {
+      console.log("Init Login...", { REDIRECT_URI });
       setState({ ...state, isLoading: true, error: null });
 
-      // For a real implementation, you would replace this URL with your PocketBase instance OAuth URL
-      const authUrl = `${pb.baseUrl}/api/oauth2-redirect`;
-      const redirectUri = AuthSession.makeRedirectUri({
-        scheme: 'your-app-scheme', // Replace with your actual app scheme
-        path: 'redirect',
-      });
+      pb.authStore.clear();
+      console.log("pb.authStore", pb.authStore);
 
-      // In a real implementation, this would be the actual Google OAuth flow through PocketBase
-      // For demo purposes, we're simulating a successful auth
-      const authResult = await AuthSession.startAsync({
-        authUrl: `${authUrl}?provider=google&redirect=${encodeURIComponent(redirectUri)}`,
+      const authData = await pb.collection("users").authWithOAuth2({
+        provider: "google",
+        urlCallback: async (url) => {
+          console.log("urlCallback", { url, REDIRECT_URI });
+          await WebBrowser.openAuthSessionAsync(url, REDIRECT_URI);
+        },
       });
+      console.log("authData", authData);
 
-      if (authResult.type === 'success') {
-        // This is where you would handle the auth code from Google
-        // For this demo, we'll simulate a successful auth
-        
-        // In a real implementation, PocketBase would handle the OAuth flow and return a user
-        // Here we're simulating a successful login
-        const mockUser = {
-          id: 'user123',
-          email: 'user@example.com',
-          name: 'Demo User',
-          avatar: 'https://i.pravatar.cc/300',
-          created: new Date().toISOString(),
-          updated: new Date().toISOString(),
-        };
-        
-        // Simulate saving to PocketBase auth store
-        pb.authStore.save('mock_token', mockUser);
-        
-        setState({
-          isLoading: false,
-          isSignedIn: true,
-          user: mockUser,
-          error: null,
-        });
-      } else {
-        setState({
-          ...state,
-          isLoading: false,
-          error: 'Sign in was cancelled or failed',
-        });
-      }
-    } catch (error) {
-      console.error('Error during sign in:', error);
+      // Convert PocketBase user to our User type
+      const user: User = {
+        id: authData.record.id,
+        email: authData.record.email,
+        name: authData.record.name,
+        avatar: authData.record.avatar,
+        created: authData.record.created,
+        updated: authData.record.updated,
+        collectionId: authData.record.collectionId,
+        collectionName: authData.record.collectionName,
+        expand: authData.record.expand || {},
+      };
+
+      setState({
+        isLoading: false,
+        isSignedIn: true,
+        user,
+        error: null,
+      });
+    } catch (error: any) {
+      console.error("Error during Google sign in:", error, error.originalError);
       setState({
         ...state,
         isLoading: false,
-        error: 'Failed to sign in. Please try again.',
+        error: "Failed to sign in with Google. Please try again.",
+      });
+    }
+  };
+
+  const signInWithEmail = async (email: string, password: string) => {
+    try {
+      setState({ ...state, isLoading: true, error: null });
+      pb.authStore.clear();
+
+      const authData = await pb
+        .collection("users")
+        .authWithPassword(email, password);
+
+      // Convert PocketBase user to our User type
+      const user: User = {
+        id: authData.record.id,
+        email: authData.record.email,
+        name: authData.record.name,
+        avatar: authData.record.avatar,
+        created: authData.record.created,
+        updated: authData.record.updated,
+        collectionId: authData.record.collectionId,
+        collectionName: authData.record.collectionName,
+        expand: authData.record.expand || {},
+      };
+
+      setState({
+        isLoading: false,
+        isSignedIn: true,
+        user,
+        error: null,
+      });
+    } catch (error) {
+      console.error("Error during email sign in:", error);
+      setState({
+        ...state,
+        isLoading: false,
+        error: "Invalid email or password.",
       });
     }
   };
@@ -175,11 +215,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error: null,
       });
     } catch (error) {
-      console.error('Error during sign out:', error);
+      console.error("Error during sign out:", error);
       setState({
         ...state,
         isLoading: false,
-        error: 'Failed to sign out. Please try again.',
+        error: "Failed to sign out. Please try again.",
       });
     }
   };
@@ -188,19 +228,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       if (pb.authStore.isValid) {
         setState({ ...state, isLoading: true });
-        // In a real app, you would refresh the user data from PocketBase
-        // For this demo, we'll simulate a refresh by keeping the same user
+        const authData = await pb.collection("users").authRefresh();
+
+        // Convert PocketBase user to our User type
+        const user: User = {
+          id: authData.record.id,
+          email: authData.record.email,
+          name: authData.record.name,
+          avatar: authData.record.avatar,
+          created: authData.record.created,
+          updated: authData.record.updated,
+          collectionId: authData.record.collectionId,
+          collectionName: authData.record.collectionName,
+          expand: authData.record.expand || {},
+        };
+
         setState({
           ...state,
           isLoading: false,
+          user,
         });
       }
     } catch (error) {
-      console.error('Error refreshing user:', error);
+      console.error("Error refreshing user:", error);
       setState({
         ...state,
         isLoading: false,
-        error: 'Failed to refresh user data',
+        error: "Failed to refresh user data",
       });
     }
   };
@@ -209,10 +263,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         ...state,
-        signIn,
+        signIn: performGoogleSignIn,
+        signInWithEmail,
         signOut,
         refreshUser,
-      }}>
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

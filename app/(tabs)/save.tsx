@@ -1,19 +1,27 @@
-import React, { useState, useRef } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Appbar, SegmentedButtons, useTheme, Text, Button } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { ContentType } from '@/utils/pb';
-import { useContent } from '@/hooks/useContent';
-import { useAuth } from '@/contexts/AuthContext';
-import VideoForm from '@/components/forms/VideoForm';
-import MemeForm from '@/components/forms/MemeForm';
-import NewsForm from '@/components/forms/NewsForm';
-import WebsiteForm from '@/components/forms/WebsiteForm';
-import ImageForm from '@/components/forms/ImageForm';
+import ImageForm from "@/components/forms/ImageForm";
+import MemeForm from "@/components/forms/MemeForm";
+import NewsForm from "@/components/forms/NewsForm";
+import VideoForm from "@/components/forms/VideoForm";
+import WebsiteForm from "@/components/forms/WebsiteForm";
+import { useAuth } from "@/contexts/AuthContext";
+import { useContent } from "@/hooks/useContent";
+import { ContentType } from "@/utils/contentTypes";
+import { useRouter } from "expo-router";
+import React, { useRef, useState } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
+import {
+  Appbar,
+  Button,
+  SegmentedButtons,
+  Text,
+  useTheme,
+} from "react-native-paper";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SaveScreen() {
-  const [contentType, setContentType] = useState<ContentType>(ContentType.VIDEO);
+  const [contentType, setContentType] = useState<ContentType>(
+    ContentType.VIDEO
+  );
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const { addContent, isLoading } = useContent();
@@ -23,16 +31,24 @@ export default function SaveScreen() {
 
   const handleFormSubmit = async (data: any, file?: File) => {
     try {
-      await addContent(contentType, data, file);
+      await addContent(
+        {
+          ...data,
+          type: contentType,
+          createdAt: new Date().toISOString(),
+        },
+        file
+      );
+
       setSuccessMessage(`Your ${contentType} has been saved successfully!`);
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => {
         setSuccessMessage(null);
-        router.push('/');
+        router.push("/");
       }, 3000);
     } catch (error) {
-      console.error('Error saving content:', error);
+      console.error("Error saving content:", error);
     }
   };
 
@@ -40,13 +56,8 @@ export default function SaveScreen() {
     if (!isSignedIn) {
       return (
         <View style={styles.signInContainer}>
-          <Text style={styles.signInText}>
-            Please sign in to save content
-          </Text>
-          <Button
-            mode="contained"
-            onPress={signIn}
-            style={styles.signInButton}>
+          <Text style={styles.signInText}>Please sign in to save content</Text>
+          <Button mode="contained" onPress={signIn} style={styles.signInButton}>
             Sign in with Google
           </Button>
         </View>
@@ -61,7 +72,9 @@ export default function SaveScreen() {
       case ContentType.NEWS:
         return <NewsForm onSubmit={handleFormSubmit} isLoading={isLoading} />;
       case ContentType.WEBSITE:
-        return <WebsiteForm onSubmit={handleFormSubmit} isLoading={isLoading} />;
+        return (
+          <WebsiteForm onSubmit={handleFormSubmit} isLoading={isLoading} />
+        );
       case ContentType.IMAGE:
         return <ImageForm onSubmit={handleFormSubmit} isLoading={isLoading} />;
       default:
@@ -70,7 +83,7 @@ export default function SaveScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <Appbar.Header elevated>
         <Appbar.BackAction onPress={() => router.back()} />
         <Appbar.Content title="Save New Item" />
@@ -84,11 +97,11 @@ export default function SaveScreen() {
             scrollViewRef.current?.scrollTo({ y: 0, animated: true });
           }}
           buttons={[
-            { value: ContentType.VIDEO, label: 'Video' },
-            { value: ContentType.MEME, label: 'Meme' },
-            { value: ContentType.NEWS, label: 'News' },
-            { value: ContentType.WEBSITE, label: 'Website' },
-            { value: ContentType.IMAGE, label: 'Image' },
+            { value: ContentType.VIDEO, label: "Video" },
+            { value: ContentType.MEME, label: "Meme" },
+            { value: ContentType.NEWS, label: "News" },
+            { value: ContentType.WEBSITE, label: "Website" },
+            { value: ContentType.IMAGE, label: "Image" },
           ]}
           style={styles.segmentedButtons}
         />
@@ -99,9 +112,14 @@ export default function SaveScreen() {
           style={[
             styles.successMessage,
             { backgroundColor: theme.colors.secondaryContainer },
-          ]}>
+          ]}
+        >
           <Text
-            style={[styles.successText, { color: theme.colors.onSecondaryContainer }]}>
+            style={[
+              styles.successText,
+              { color: theme.colors.onSecondaryContainer },
+            ]}
+          >
             {successMessage}
           </Text>
         </View>
@@ -110,7 +128,8 @@ export default function SaveScreen() {
       <ScrollView
         ref={scrollViewRef}
         contentContainerStyle={styles.formContainer}
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+      >
         {renderForm()}
       </ScrollView>
     </SafeAreaView>
@@ -134,22 +153,22 @@ const styles = StyleSheet.create({
     margin: 16,
     padding: 16,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   successText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   signInContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   signInText: {
     marginBottom: 20,
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   signInButton: {
     minWidth: 200,

@@ -1,200 +1,202 @@
-import React from 'react';
-import { View, StyleSheet, Image, Dimensions, Pressable } from 'react-native';
-import { Card, Text, Chip, useTheme, IconButton } from 'react-native-paper';
-import { ContentUnion } from '@/types';
-import { ContentType } from '@/utils/pb';
-import { Link, Video, Newspaper, Globe, Image as ImageIcon } from 'lucide-react-native';
+import { ContentItem } from "@/types";
+import { ContentType } from "@/utils/contentTypes";
+import {
+  Globe,
+  Image as ImageIcon,
+  Link,
+  Newspaper,
+  Video,
+} from "lucide-react-native";
+import React from "react";
+import { Dimensions, Image, StyleSheet, View } from "react-native";
+import { Card, Chip, IconButton, Text, useTheme } from "react-native-paper";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 interface ContentCardProps {
-  item: ContentUnion;
-  onPress: () => void;
+  item: ContentItem;
   onDelete?: () => void;
 }
 
-export default function ContentCard({ item, onPress, onDelete }: ContentCardProps) {
+export default function ContentCard({ item, onDelete }: ContentCardProps) {
   const theme = useTheme();
 
   const getContentTypeIcon = () => {
+    const iconProps = {
+      size: 20,
+      color: theme.colors.primary,
+      style: styles.icon,
+    };
+
     switch (item.type) {
       case ContentType.VIDEO:
-        return <Video size={20} color={theme.colors.primary} />;
+        return <Video {...iconProps} />;
       case ContentType.MEME:
-        return <ImageIcon size={20} color={theme.colors.secondary} />;
+        return <ImageIcon {...iconProps} />;
       case ContentType.NEWS:
-        return <Newspaper size={20} color={theme.colors.tertiary} />;
+        return <Newspaper {...iconProps} />;
       case ContentType.WEBSITE:
-        return <Globe size={20} color={theme.colors.primary} />;
+        return <Globe {...iconProps} />;
       case ContentType.IMAGE:
-        return <ImageIcon size={20} color={theme.colors.secondary} />;
+        return <ImageIcon {...iconProps} />;
       default:
-        return <Link size={20} color={theme.colors.primary} />;
+        return <Link {...iconProps} />;
     }
   };
 
   const getCardTitle = () => {
     switch (item.type) {
       case ContentType.VIDEO:
-        return item.title || 'Untitled Video';
-      case ContentType.MEME:
-        return `Meme: ${item.category}`;
       case ContentType.NEWS:
-        return item.title;
+        return item.title || "Untitled";
+      case ContentType.MEME:
+        return item.category || "Uncategorized";
       case ContentType.WEBSITE:
-        return item.name || item.url;
+        return item.title || item.url || "Untitled";
       case ContentType.IMAGE:
-        return item.description || 'Untitled Image';
+        return item.description || "No description";
       default:
-        return 'Saved Content';
+        return "Unknown content";
     }
   };
 
   const getCardContent = () => {
     switch (item.type) {
       case ContentType.VIDEO:
-        return item.comment ? (
-          <Text variant="bodyMedium" numberOfLines={2} style={styles.comment}>
-            {item.comment}
-          </Text>
-        ) : null;
       case ContentType.NEWS:
-        return (
-          <Text variant="bodyMedium" numberOfLines={3} style={styles.summary}>
-            {item.summary}
-          </Text>
-        );
       case ContentType.WEBSITE:
-        return (
-          <Text variant="bodyMedium" numberOfLines={1} style={styles.url}>
-            {item.url}
-          </Text>
-        );
-      default:
-        return null;
+        if (item.url) {
+          return (
+            <Text variant="bodyMedium" numberOfLines={2} style={styles.url}>
+              {item.url}
+            </Text>
+          );
+        }
+        break;
+      case ContentType.MEME:
+      case ContentType.IMAGE:
+        if (item.description) {
+          return (
+            <Text variant="bodyMedium" numberOfLines={2}>
+              {item.description}
+            </Text>
+          );
+        }
+        break;
     }
+    return null;
   };
 
   // Function to render image for memes and images
   const renderImage = () => {
     if (
       (item.type === ContentType.MEME || item.type === ContentType.IMAGE) &&
-      (item.imageUrl || item.file)
+      item.imageUrl
     ) {
-      const imageSource = item.imageUrl
-        ? { uri: item.imageUrl }
-        : { uri: `${pb.baseUrl}/api/files/${item.collection}/${item.id}/${item.file}` };
-
       return (
         <Image
-          source={imageSource}
+          source={{ uri: item.imageUrl }}
           style={styles.image}
           resizeMode="cover"
         />
       );
     }
-    
+
     return null;
   };
 
   return (
-    <Pressable onPress={onPress}>
-      <Card
-        style={[
-          styles.card,
-          { backgroundColor: theme.colors.elevation.level1 }
-        ]}
-        contentStyle={styles.cardContent}>
-        <Card.Content style={styles.content}>
-          <View style={styles.header}>
-            <View style={styles.titleRow}>
-              {getContentTypeIcon()}
-              <Text variant="titleMedium" numberOfLines={1} style={styles.title}>
-                {getCardTitle()}
-              </Text>
-            </View>
-            {onDelete && (
-              <IconButton
-                icon="delete"
-                size={20}
-                onPress={onDelete}
-                iconColor={theme.colors.error}
-              />
-            )}
+    <Card
+      style={[styles.card, { backgroundColor: theme.colors.elevation.level1 }]}
+      contentStyle={styles.cardContent}
+    >
+      <Card.Content style={styles.content}>
+        <View style={styles.header}>
+          <View style={styles.titleRow}>
+            {getContentTypeIcon()}
+            <Text variant="titleMedium" numberOfLines={1} style={styles.title}>
+              {getCardTitle()}
+            </Text>
           </View>
-          
-          {renderImage()}
-          {getCardContent()}
-
-          {item.tags && item.tags.length > 0 && (
-            <View style={styles.tagsContainer}>
-              {item.tags.map((tag) => (
-                <Chip
-                  key={tag}
-                  style={[styles.tag, { backgroundColor: theme.colors.secondaryContainer }]}
-                  textStyle={{ color: theme.colors.onSecondaryContainer }}
-                  compact>
-                  {tag}
-                </Chip>
-              ))}
-            </View>
+          {onDelete && (
+            <IconButton
+              icon="delete"
+              size={20}
+              onPress={onDelete}
+              iconColor={theme.colors.error}
+            />
           )}
-        </Card.Content>
-      </Card>
-    </Pressable>
+        </View>
+
+        {renderImage()}
+        {getCardContent()}
+
+        {item.tags && item.tags.length > 0 && (
+          <View style={styles.tagsContainer}>
+            {item.tags.map((tag) => (
+              <Chip
+                key={tag}
+                style={[
+                  styles.tag,
+                  { backgroundColor: theme.colors.secondaryContainer },
+                ]}
+                textStyle={{ color: theme.colors.onSecondaryContainer }}
+                compact
+              >
+                {tag}
+              </Chip>
+            ))}
+          </View>
+        )}
+      </Card.Content>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 12,
+    marginBottom: 16,
+    borderRadius: 8,
+    elevation: 2,
   },
   cardContent: {
-    padding: 0,
+    padding: 8,
   },
   content: {
-    padding: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  title: {
-    marginLeft: 8,
-    flex: 1,
-  },
-  comment: {
-    marginTop: 8,
-  },
-  summary: {
-    marginTop: 8,
-  },
-  url: {
-    marginTop: 4,
-    opacity: 0.7,
-  },
-  image: {
-    width: '100%',
-    height: width * 0.4,
-    borderRadius: 8,
-    marginVertical: 8,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
     gap: 8,
   },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  titleRow: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  icon: {
+    marginRight: 4,
+  },
+  title: {
+    flex: 1,
+  },
+  url: {
+    color: "#666",
+  },
+  image: {
+    width: "100%",
+    height: width * 0.5,
+    borderRadius: 4,
+  },
+  tagsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8,
+  },
   tag: {
-    marginRight: 8,
+    height: 24,
   },
 });

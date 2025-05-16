@@ -1,75 +1,198 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import ContentCard from "@/components/ContentCard";
+import FilterBar from "@/components/FilterBar";
+import SearchBar from "@/components/SearchBar";
+import { useAuth } from "@/contexts/AuthContext";
+import { useContent } from "@/hooks/useContent";
+import { ContentItem } from "@/types";
+import { ContentType } from "@/utils/contentTypes";
+import { useIsFocused } from "@react-navigation/native";
+import React, { useCallback, useState } from "react";
+import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Appbar,
+  Button,
+  Text,
+  useTheme,
+} from "react-native-paper";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
+  const {
+    items,
+    tags,
+    isLoading,
+    error,
+    fetchContent,
+    searchContent,
+    deleteContent,
+  } = useContent();
+  const [selectedType, setSelectedType] = useState<ContentType | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const theme = useTheme();
+  const { isSignedIn, signIn } = useAuth();
+  const isFocused = useIsFocused();
+
+  // Refresh content when screen is focused
+  React.useEffect(() => {
+    console.log("isFocused", isFocused);
+    if (isFocused) {
+      // fetchContent();
+    }
+  }, [isFocused, fetchContent]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchContent();
+    setRefreshing(false);
+  }, [fetchContent]);
+
+  const handleSearch = (query: string) => {
+    if (query.trim()) {
+      searchContent(query);
+    } else {
+      fetchContent();
+    }
+  };
+
+  const handleSelectType = (type: ContentType | null) => {
+    setSelectedType(type);
+    fetchContent();
+  };
+
+  const handleSelectTag = (tagId: string) => {
+    const newSelectedTags = selectedTags.includes(tagId)
+      ? selectedTags.filter((id) => id !== tagId)
+      : [...selectedTags, tagId];
+
+    setSelectedTags(newSelectedTags);
+
+    // Filter content based on selected tags
+    // This would typically be handled by the backend, but for this demo
+    // we'll simulate it on the frontend
+  };
+
+  const handleDeleteContent = (item: ContentItem) => {
+    if (item.id) {
+      deleteContent(item.id);
+    }
+  };
+
+  const filteredItems = items.filter((item) => {
+    if (selectedType && item.type !== selectedType) {
+      return false;
+    }
+    if (
+      selectedTags.length > 0 &&
+      !selectedTags.every((tag) => item.tags.includes(tag))
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" />
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      );
+    }
+
+    if (!isSignedIn) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.messageText}>
+            Please sign in to view your saved content
+          </Text>
+          <Button mode="contained" onPress={signIn} style={styles.signInButton}>
+            Sign In
+          </Button>
+        </View>
+      );
+    }
+
+    if (filteredItems.length === 0) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.messageText}>No content found</Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={filteredItems}
+        renderItem={({ item }) => (
+          <ContentCard item={item} onDelete={() => handleDeleteContent(item)} />
+        )}
+        keyExtractor={(item) => `${item.type}-${item.id}`}
+        contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      />
+    );
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <Appbar.Header>
+        <Appbar.Content title="Your Content" />
+      </Appbar.Header>
+      <View style={styles.searchContainer}>
+        <SearchBar onSearch={handleSearch} />
+        <FilterBar
+          types={Object.values(ContentType)}
+          tags={tags}
+          selectedType={selectedType}
+          selectedTags={selectedTags}
+          onSelectType={handleSelectType}
+          onSelectTags={setSelectedTags}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      </View>
+      {renderContent()}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  searchContainer: {
+    padding: 16,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  contentContainer: {
+    padding: 16,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  messageText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "red",
+    textAlign: "center",
+  },
+  signInButton: {
+    marginTop: 16,
   },
 });
