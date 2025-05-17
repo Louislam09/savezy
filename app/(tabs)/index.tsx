@@ -149,7 +149,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <Appbar.Header>
-        <Appbar.Content title="Your Content" />
+        <Appbar.Content title="Home" />
       </Appbar.Header>
       <View style={styles.searchContainer}>
         <SearchBar onSearch={handleSearch} />

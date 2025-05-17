@@ -23,13 +23,11 @@ export function useContent(): ContentHookResult {
   const { isSignedIn, user } = useAuth();
 
   const fetchContents = useCallback(async () => {
-    console.log("--- fetchContents");
     try {
       setIsLoading(true);
       setError(null);
 
       const result = await getAllContents();
-      console.log("result", result);
 
       setItems(result);
     } catch (error: any) {
