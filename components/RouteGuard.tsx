@@ -11,6 +11,7 @@ export default function RouteGuard({
   const { isSignedIn, isLoading } = useAuth();
 
   useEffect(() => {
+    console.log("isSignedIn", isSignedIn);
     if (!isLoading && !isSignedIn) {
       router.replace("/login");
     }

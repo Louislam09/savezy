@@ -12,18 +12,18 @@ export interface User {
 
 export interface ContentItem {
   id: string;
-  type: "Video" | "Meme" | "News" | "Website" | "Image";
-  url?: string;
-  title?: string;
-  imageUrl?: string;
-  description?: string;
-  summary?: string;
-  comment?: string;
-  category?: string;
-  tags: string[];
-  created: string;
-  updated: string;
-  user: string;
+  type: string;
+  user: string; // RELATION_RECORD_ID
+  url: string;
+  title: string;
+  imageUrl: string;
+  description: string;
+  summary: string;
+  comment: string;
+  category: string;
+  tags: string[]; // JSON array
+  created: string; // ISO date string
+  updated: string; // ISO date string
 }
 
 export interface FileItem {

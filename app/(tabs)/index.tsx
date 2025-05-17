@@ -35,12 +35,12 @@ export default function HomeScreen() {
   const isFocused = useIsFocused();
 
   // Refresh content when screen is focused
-  React.useEffect(() => {
-    console.log("isFocused", isFocused);
-    if (isFocused) {
-      // fetchContent();
-    }
-  }, [isFocused, fetchContent]);
+  // React.useEffect(() => {
+  //   console.log("isFocused", isFocused);
+  //   if (isFocused) {
+  //     fetchContent();
+  //   }
+  // }, [isFocused, fetchContent]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -91,6 +91,7 @@ export default function HomeScreen() {
     }
     return true;
   });
+  console.log("filteredItems", filteredItems);
 
   const renderContent = () => {
     if (isLoading) {

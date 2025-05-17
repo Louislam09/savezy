@@ -30,20 +30,8 @@ export function useContent(): ContentHookResult {
 
       const result = await getAllContents();
       console.log("result", result);
-      // Fetch tags
-      // const tagsResult = await pb.collection("contents").getList(1, 50, {
-      //   sort: "name",
-      // });
 
-      // Convert PocketBase records to Tag objects
-      // const tags = tagsResult.items.map((record) => ({
-      //   id: record.id,
-      //   name: record.name,
-      //   count: record.count || 0,
-      // })) as Tag[];
-
-      // setItems(result);
-      // setTags(tags);
+      setItems(result);
     } catch (error: any) {
       console.error("Error fetching content:", error, error.originalError);
       setError("Failed to load content. Please try again.");

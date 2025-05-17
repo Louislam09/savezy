@@ -1,13 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import PocketBase from "pocketbase";
-import { POCKETBASE_URL, pb as globalPb } from "../globalConfig";
+import { POCKETBASE_URL } from "../globalConfig";
 import type { ContentItem, User } from "../types";
 import "./eventSourcePolyfill";
 
 type AuthModel = User;
 
-// Use the global PocketBase instance
-let pb = globalPb;
+// Create a single PocketBase instance for the entire app
+let pb: PocketBase;
 let initPromise: Promise<PocketBase> | null = null;
 
 // Initialize PocketBase
@@ -20,101 +20,72 @@ export async function initPocketBase() {
   // Create new initialization promise
   initPromise = (async () => {
     try {
-      // Use POCKETBASE_URL from global config
       let pocketbaseUrl = POCKETBASE_URL || "http://127.0.0.1:8090";
 
-      // Ensure the URL has a protocol
       if (
         !pocketbaseUrl.startsWith("http://") &&
         !pocketbaseUrl.startsWith("https://")
       ) {
-        pocketbaseUrl = `http://${pocketbaseUrl}`; // Default to http:// for local development
+        pocketbaseUrl = `http://${pocketbaseUrl}`;
       }
 
       console.log("Initializing PocketBase with URL:", pocketbaseUrl);
 
-      // Configure the global instance
-      pb.autoCancellation(false); // Disable auto-cancellation
+      if (!pb) {
+        pb = new PocketBase(pocketbaseUrl);
+        pb.autoCancellation(false);
 
-      // Load any existing auth data on client-side
-      if (typeof window !== "undefined") {
-        // Try to load auth data from AsyncStorage
-        try {
-          const authData = await AsyncStorage.getItem("pocketbase_auth");
-          if (authData) {
-            const parsedData = JSON.parse(authData);
-            if (parsedData.token && parsedData.model) {
-              pb.authStore.save(parsedData.token, parsedData.model);
+        if (typeof window !== "undefined") {
+          try {
+            const authData = await AsyncStorage.getItem("pocketbase_auth");
+            if (authData) {
+              const parsedData = JSON.parse(authData);
+              if (parsedData.token && parsedData.record) {
+                pb.authStore.save(parsedData.token, parsedData.record);
 
-              // Verify the loaded auth data
-              try {
-                await pb.collection("users").authRefresh();
-                console.log("Successfully refreshed auth token");
-              } catch (refreshError) {
-                console.error(
-                  "Failed to refresh auth, clearing auth store:",
-                  refreshError
-                );
-                pb.authStore.clear();
-                await AsyncStorage.removeItem("pocketbase_auth");
+                try {
+                  await pb.collection("users").authRefresh();
+                  console.log("Successfully refreshed auth token");
+                } catch (refreshError) {
+                  console.error(
+                    "Failed to refresh auth, clearing auth store:",
+                    refreshError
+                  );
+                  pb.authStore.clear();
+                  await AsyncStorage.removeItem("pocketbase_auth");
+                }
               }
             }
+          } catch (e) {
+            console.error("Failed to load auth data:", e);
+            await AsyncStorage.removeItem("pocketbase_auth");
           }
-        } catch (e) {
-          console.error("Failed to load auth data:", e);
-          await AsyncStorage.removeItem("pocketbase_auth");
-        }
 
-        // Set up auth change listener
-        pb.authStore.onChange(() => {
-          try {
-            const model = pb.authStore.record as AuthModel | null;
-            console.log("Auth state changed", {
-              isValid: pb.authStore.isValid,
-              hasModel: !!model,
-              userId: model?.id,
-              token: pb.authStore.token ? "present" : "none",
-              modelData: model
-                ? {
-                    email: model.email,
-                    id: model.id,
-                  }
-                : null,
-            });
+          pb.authStore.onChange(() => {
+            try {
+              const record = pb.authStore.record as AuthModel | null;
+              console.log("Auth state changed", {
+                isValid: pb.authStore.isValid,
+                hasModel: !!record,
+                userId: record?.id,
+              });
 
-            if (pb.authStore.isValid && model) {
-              AsyncStorage.setItem(
-                "pocketbase_auth",
-                JSON.stringify({
-                  token: pb.authStore.token,
-                  model: model,
-                })
-              )
-                .then(() => {
-                  console.log("Successfully saved auth data to AsyncStorage");
-                })
-                .catch((error) => {
-                  console.error(
-                    "Failed to save auth data to AsyncStorage:",
-                    error
-                  );
-                });
-            } else {
-              AsyncStorage.removeItem("pocketbase_auth")
-                .then(() => {
-                  console.log("Cleared auth data from AsyncStorage");
-                })
-                .catch((error) => {
-                  console.error(
-                    "Failed to clear auth data from AsyncStorage:",
-                    error
-                  );
-                });
+              if (pb.authStore.isValid && record) {
+                AsyncStorage.setItem(
+                  "pocketbase_auth",
+                  JSON.stringify({
+                    token: pb.authStore.token,
+                    record: record,
+                  })
+                );
+              } else {
+                AsyncStorage.removeItem("pocketbase_auth");
+              }
+            } catch (error) {
+              console.error("Error handling auth change:", error);
             }
-          } catch (error) {
-            console.error("Error handling auth change:", error);
-          }
-        });
+          });
+        }
       }
 
       // Verify connection
@@ -139,9 +110,9 @@ export async function initPocketBase() {
   return initPromise;
 }
 
-// Get current user ID with better error handling
 export const getCurrentUserId = async (): Promise<string | null> => {
   try {
+    const pb = await getPocketBase();
     if (!pb.authStore.isValid) {
       console.log("No valid auth session");
       return null;
@@ -160,11 +131,31 @@ export const getCurrentUserId = async (): Promise<string | null> => {
   }
 };
 
+export function getPocketBase() {
+  try {
+    if (typeof window !== "undefined") {
+      if (!pb) {
+        return initPocketBase();
+      }
+      return pb;
+    }
+    const newPb = new PocketBase(
+      process.env.POCKETBASE_URL || "http://127.0.0.1:8090"
+    );
+    newPb.autoCancellation(false);
+    return newPb;
+  } catch (error) {
+    console.error("Error getting PocketBase instance:", error);
+    throw error;
+  }
+}
+
 // Save content to PocketBase
 export async function saveContent(
   contentData: Partial<ContentItem>
 ): Promise<ContentItem> {
   try {
+    const pb = await getPocketBase();
     const userId = await getCurrentUserId();
 
     if (!userId) {
@@ -174,6 +165,8 @@ export async function saveContent(
     const data = {
       ...contentData,
       user: userId,
+      collectionName: "contents",
+      tags: Array.isArray(contentData.tags) ? contentData.tags : [],
     };
 
     const record = await pb.collection("contents").create(data);
@@ -181,6 +174,7 @@ export async function saveContent(
     return {
       id: record.id,
       type: record.type,
+      user: record.user,
       url: record.url,
       title: record.title,
       imageUrl: record.imageUrl,
@@ -188,10 +182,9 @@ export async function saveContent(
       summary: record.summary,
       comment: record.comment,
       category: record.category,
-      tags: record.tags || [],
+      tags: Array.isArray(record.tags) ? record.tags : [],
       created: record.created,
       updated: record.updated,
-      user: record.user,
     };
   } catch (error) {
     console.error("Error saving content:", error);
@@ -202,8 +195,8 @@ export async function saveContent(
 // Get all content from PocketBase
 export async function getAllContents(): Promise<ContentItem[]> {
   try {
+    const pb = await getPocketBase();
     const userId = await getCurrentUserId();
-    console.log("Fetching contents for user:", userId);
 
     if (!userId) {
       throw new Error("User not authenticated");
@@ -215,8 +208,11 @@ export async function getAllContents(): Promise<ContentItem[]> {
     });
 
     return records.items.map((record) => ({
+      collectionId: record.collectionId,
+      collectionName: record.collectionName,
       id: record.id,
       type: record.type,
+      user: record.user,
       url: record.url,
       title: record.title,
       imageUrl: record.imageUrl,
@@ -224,10 +220,9 @@ export async function getAllContents(): Promise<ContentItem[]> {
       summary: record.summary,
       comment: record.comment,
       category: record.category,
-      tags: record.tags || [],
+      tags: Array.isArray(record.tags) ? record.tags : [],
       created: record.created,
       updated: record.updated,
-      user: record.user,
     }));
   } catch (error: any) {
     console.error("Error getting content:", error, error.originalError);
@@ -238,6 +233,7 @@ export async function getAllContents(): Promise<ContentItem[]> {
 // Delete content from PocketBase
 export async function deleteContent(id: string): Promise<void> {
   try {
+    const pb = await getPocketBase();
     await pb.collection("contents").delete(id);
   } catch (error) {
     console.error("Error deleting content:", error);
@@ -248,6 +244,7 @@ export async function deleteContent(id: string): Promise<void> {
 // Upload file to PocketBase
 export async function uploadFile(file: File, folder?: string): Promise<string> {
   try {
+    const pb = await getPocketBase();
     const userId = await getCurrentUserId();
 
     if (!userId) {
@@ -272,6 +269,8 @@ export async function uploadFile(file: File, folder?: string): Promise<string> {
 // Check if PocketBase is available
 export const isPocketBaseAvailable = async (): Promise<boolean> => {
   try {
+    const pb = await getPocketBase();
+
     // Create an AbortController for the request
     const controller = new AbortController();
 
@@ -325,17 +324,16 @@ function getFromLocalStorage(): ContentItem[] {
 // Get content by ID from PocketBase
 export async function getContentById(id: string): Promise<ContentItem | null> {
   try {
-    // Check if PocketBase is available
     const isPbAvailable = await isPocketBaseAvailable();
 
     if (isPbAvailable) {
-      // Fetch a record from the 'content' collection by ID
+      const pb = await getPocketBase();
       const record = await pb.collection("contents").getOne(id);
 
-      // Convert PocketBase record to ContentItem
-      const item: ContentItem = {
+      return {
         id: record.id,
         type: record.type,
+        user: record.user,
         url: record.url,
         title: record.title,
         imageUrl: record.imageUrl,
@@ -343,21 +341,15 @@ export async function getContentById(id: string): Promise<ContentItem | null> {
         summary: record.summary,
         comment: record.comment,
         category: record.category,
-        tags: record.tags,
+        tags: Array.isArray(record.tags) ? record.tags : [],
         created: record.created,
         updated: record.updated,
-        user: record.user,
       };
-
-      return item;
-    } else {
-      // Fall back to localStorage if PocketBase is not available
-      return getItemByIdFromLocalStorage(id);
     }
+    return null;
   } catch (error) {
-    console.error("Error getting document from PocketBase:", error);
-    // Fall back to localStorage if PocketBase fails
-    return getItemByIdFromLocalStorage(id);
+    console.error("Error getting content by ID:", error);
+    return null;
   }
 }
 
@@ -378,7 +370,6 @@ function convertToDataURL(file: File): Promise<string> {
   });
 }
 
-// Delete from localStorage as fallback
 function deleteFromLocalStorage(id: string): void {
   // Get existing items
   const items = getLocalStorage("contentItems") || [];
@@ -391,29 +382,32 @@ function deleteFromLocalStorage(id: string): void {
   console.log("Content deleted from localStorage:", id);
 }
 
-// Update content in PocketBase
 export async function updateContent(
   id: string,
   contentData: Partial<ContentItem>
 ): Promise<ContentItem> {
   try {
-    // Check if PocketBase is available
     const isPbAvailable = await isPocketBaseAvailable();
 
     if (isPbAvailable) {
-      // Get current user ID
+      const pb = await getPocketBase();
       const userId = await getCurrentUserId();
+
       if (!userId) {
         throw new Error("User not authenticated");
       }
 
-      // Update the record in PocketBase
-      const record = await pb.collection("contents").update(id, contentData);
+      const data = {
+        ...contentData,
+        tags: Array.isArray(contentData.tags) ? contentData.tags : [],
+      };
 
-      // Convert PocketBase record to ContentItem
-      const updatedContent: ContentItem = {
+      const record = await pb.collection("contents").update(id, data);
+
+      return {
         id: record.id,
         type: record.type,
+        user: record.user,
         url: record.url,
         title: record.title,
         imageUrl: record.imageUrl,
@@ -421,56 +415,16 @@ export async function updateContent(
         summary: record.summary,
         comment: record.comment,
         category: record.category,
-        tags: record.tags,
+        tags: Array.isArray(record.tags) ? record.tags : [],
         created: record.created,
         updated: record.updated,
-        user: record.user,
       };
-
-      console.log("Content updated in PocketBase:", updatedContent);
-      return updatedContent;
-    } else {
-      // Fall back to localStorage if PocketBase is not available
-      console.log("PocketBase not available, using localStorage");
-      return updateInLocalStorage(id, contentData);
     }
+    throw new Error("PocketBase is not available");
   } catch (error) {
-    console.error(
-      "Error updating in PocketBase, falling back to localStorage:",
-      error
-    );
-    // Fall back to localStorage if PocketBase fails
-    return updateInLocalStorage(id, contentData);
+    console.error("Error updating content:", error);
+    throw error;
   }
-}
-
-// Update in localStorage as fallback
-function updateInLocalStorage(
-  id: string,
-  contentData: Partial<ContentItem>
-): ContentItem {
-  // Get existing items
-  const items = getLocalStorage("contentItems") || [];
-
-  // Find and update the item
-  const updatedItems = items.map((item: ContentItem) => {
-    if (item.id === id) {
-      return { ...item, ...contentData };
-    }
-    return item;
-  });
-
-  // Save back to localStorage
-  setLocalStorage("contentItems", updatedItems);
-
-  // Return the updated item
-  const updatedItem = updatedItems.find((item: ContentItem) => item.id === id);
-  if (!updatedItem) {
-    throw new Error("Item not found");
-  }
-
-  console.log("Content updated in localStorage:", updatedItem);
-  return updatedItem;
 }
 
 // Local storage fallback functions

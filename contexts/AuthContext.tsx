@@ -1,5 +1,5 @@
-import { pb } from "@/globalConfig";
 import { AuthState, User } from "@/types";
+import { getPocketBase } from "@/utils/pocketbase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
@@ -35,7 +35,6 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>(initialState);
   const REDIRECT_URI = AuthSession.makeRedirectUri();
-
   // Initialize WebBrowser
   useEffect(() => {
     WebBrowser.warmUpAsync();
@@ -44,24 +43,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Load auth state from storage on mount
   useEffect(() => {
     const loadAuthState = async () => {
       try {
+        const pb = await getPocketBase();
+
+        console.log("Loading auth state from storage...");
         const storedAuth = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
-        console.log("storedAuth", storedAuth);
+
         if (storedAuth) {
+          console.log("Found stored auth data");
           const parsedAuth = JSON.parse(storedAuth);
-          pb.authStore.save(parsedAuth.token, parsedAuth.model);
+
+          // Save to PocketBase auth store
+          pb.authStore.save(parsedAuth.token, parsedAuth.record);
 
           if (pb.authStore.isValid) {
+            console.log("Stored auth is valid, restoring session");
             setState({
               isLoading: false,
               isSignedIn: true,
-              user: parsedAuth.model as User,
+              user: parsedAuth.record as User,
               error: null,
             });
+
+            // Verify and refresh the token
+            try {
+              const authData = await pb.collection("users").authRefresh();
+              console.log("Successfully refreshed auth token");
+
+              // Update stored data with refreshed token
+              await AsyncStorage.setItem(
+                AUTH_STORAGE_KEY,
+                JSON.stringify({
+                  token: pb.authStore.token,
+                  record: authData.record,
+                })
+              );
+            } catch (refreshError) {
+              console.error("Failed to refresh token:", refreshError);
+              // Clear invalid auth data
+              pb.authStore.clear();
+              await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+              setState({
+                isLoading: false,
+                isSignedIn: false,
+                user: null,
+                error: null,
+              });
+            }
           } else {
-            // Token expired
+            console.log("Stored auth is invalid, clearing");
             await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
             setState({
               isLoading: false,
@@ -71,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
           }
         } else {
+          console.log("No stored auth found");
           setState({
             ...state,
             isLoading: false,
@@ -90,51 +124,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loadAuthState();
   }, []);
 
-  useEffect(() => {
-    console.log("state.isSignedIn", state.isSignedIn);
-    const saveAuthState = async () => {
-      try {
-        if (state.isSignedIn && pb.authStore.isValid) {
-          console.log("Saving auth state...", {
-            token: pb.authStore.token,
-            model: pb.authStore.record,
-          });
-          await AsyncStorage.setItem(
-            AUTH_STORAGE_KEY,
-            JSON.stringify({
-              token: pb.authStore.token,
-              model: pb.authStore.record,
-            })
-          );
-        } else if (!state.isSignedIn) {
-          await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
-        }
-      } catch (error) {
-        console.error("Error saving auth state:", error);
-      }
-    };
-
-    if (!state.isLoading) {
-      saveAuthState();
-    }
-  }, [state.isSignedIn, state.user]);
-
   const performGoogleSignIn = async () => {
     try {
-      console.log("Init Login...", { REDIRECT_URI });
+      const pb = await getPocketBase();
+      console.log("Starting Google sign in...");
       setState({ ...state, isLoading: true, error: null });
 
       pb.authStore.clear();
-      console.log("pb.authStore", pb.authStore);
+      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
 
       const authData = await pb.collection("users").authWithOAuth2({
         provider: "google",
         urlCallback: async (url) => {
-          console.log("urlCallback", { url, REDIRECT_URI });
           await WebBrowser.openAuthSessionAsync(url, REDIRECT_URI);
         },
       });
-      console.log("authData", authData);
+
+      console.log("Google sign in successful");
 
       // Convert PocketBase user to our User type
       const user: User = {
@@ -149,6 +155,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         expand: authData.record.expand || {},
       };
 
+      // Save auth data to storage
+      await AsyncStorage.setItem(
+        AUTH_STORAGE_KEY,
+        JSON.stringify({
+          token: pb.authStore.token,
+          record: authData.record,
+        })
+      );
+
       setState({
         isLoading: false,
         isSignedIn: true,
@@ -156,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error: null,
       });
     } catch (error: any) {
-      console.error("Error during Google sign in:", error, error.originalError);
+      console.error("Error during Google sign in:", error);
       setState({
         ...state,
         isLoading: false,
@@ -167,8 +182,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
+      const pb = await getPocketBase();
       setState({ ...state, isLoading: true, error: null });
       pb.authStore.clear();
+      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
 
       const authData = await pb
         .collection("users")
@@ -186,6 +203,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         collectionName: authData.record.collectionName,
         expand: authData.record.expand || {},
       };
+
+      // Save auth data to storage
+      await AsyncStorage.setItem(
+        AUTH_STORAGE_KEY,
+        JSON.stringify({
+          token: pb.authStore.token,
+          record: authData.record,
+        })
+      );
 
       setState({
         isLoading: false,
@@ -205,6 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      const pb = await getPocketBase();
       setState({ ...state, isLoading: true });
       pb.authStore.clear();
       await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
@@ -226,6 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     try {
+      const pb = await getPocketBase();
       if (pb.authStore.isValid) {
         setState({ ...state, isLoading: true });
         const authData = await pb.collection("users").authRefresh();
@@ -242,6 +270,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           collectionName: authData.record.collectionName,
           expand: authData.record.expand || {},
         };
+
+        // Update stored auth data
+        await AsyncStorage.setItem(
+          AUTH_STORAGE_KEY,
+          JSON.stringify({
+            token: pb.authStore.token,
+            record: authData.record,
+          })
+        );
 
         setState({
           ...state,
