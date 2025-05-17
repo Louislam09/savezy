@@ -1,30 +1,42 @@
-import { AuthProvider } from "@/contexts/AuthContext";
-import { useFrameworkReady } from "@/hooks/useFrameworkReady";
-import { theme } from "@/theme";
-import { Slot } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
-import { StatusBar } from "expo-status-bar";
-import React, { useEffect } from "react";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { PaperProvider } from "react-native-paper";
+import { Feather } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
 
-SplashScreen.preventAutoHideAsync();
-
-export default function RootLayout() {
-  useFrameworkReady();
-
-  useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
-
+export default function AppLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <PaperProvider theme={theme}>
-        <AuthProvider>
-          <Slot />
-          <StatusBar style="auto" />
-        </AuthProvider>
-      </PaperProvider>
-    </GestureHandlerRootView>
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: "#007AFF",
+        tabBarInactiveTintColor: "#8E8E93",
+        headerShown: false,
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Home",
+          tabBarIcon: ({ color }) => (
+            <Feather name="home" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="browse"
+        options={{
+          title: "Browse",
+          tabBarIcon: ({ color }) => (
+            <Feather name="grid" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color }) => (
+            <Feather name="user" size={24} color={color} />
+          ),
+        }}
+      />
+    </Tabs>
   );
 }
