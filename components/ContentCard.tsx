@@ -87,7 +87,7 @@ export default function ContentCard({ item, onDelete }: ContentCardProps) {
     return null;
   };
 
-  // Function to render image for memes and images
+  // Function to render image for content with URLs and uploaded images
   const renderImage = () => {
     if (
       (item.type === ContentType.MEME || item.type === ContentType.IMAGE) &&
@@ -96,6 +96,25 @@ export default function ContentCard({ item, onDelete }: ContentCardProps) {
       return (
         <Image
           source={{ uri: item.imageUrl }}
+          style={styles.image}
+          resizeMode="cover"
+        />
+      );
+    }
+
+    if (
+      item.url &&
+      [ContentType.WEBSITE, ContentType.VIDEO, ContentType.NEWS].includes(
+        item.type as ContentType
+      )
+    ) {
+      // Using Microlink's free API for URL previews
+      const previewUrl = `https://api.microlink.io/?url=${encodeURIComponent(
+        item.url
+      )}&screenshot=true&meta=false&embed=screenshot.url`;
+      return (
+        <Image
+          source={{ uri: previewUrl }}
           style={styles.image}
           resizeMode="cover"
         />
@@ -194,9 +213,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginTop: 8,
+    marginTop: 12,
+    marginBottom: 4,
   },
   tag: {
-    height: 24,
+    minHeight: 32,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
 });

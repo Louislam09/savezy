@@ -91,7 +91,6 @@ export default function HomeScreen() {
     }
     return true;
   });
-  console.log("filteredItems", filteredItems);
 
   const renderContent = () => {
     if (isLoading) {

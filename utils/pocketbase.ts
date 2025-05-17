@@ -165,7 +165,6 @@ export async function saveContent(
     const data = {
       ...contentData,
       user: userId,
-      collectionName: "contents",
       tags: Array.isArray(contentData.tags) ? contentData.tags : [],
     };
 

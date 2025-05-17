@@ -1,11 +1,11 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { POCKETBASE_URL } from "@/globalConfig";
 import { useContent } from "@/hooks/useContent";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useMemo } from "react";
+import React from "react";
 import { Image, StyleSheet, useColorScheme, View } from "react-native";
 import {
   Appbar,
-  Avatar,
   Button,
   Card,
   Surface,
@@ -19,6 +19,12 @@ export default function ProfileScreen() {
   const { items } = useContent();
   const theme = useTheme();
   const colorScheme = useColorScheme();
+  const avatarUrl = user
+    ? `${POCKETBASE_URL}/api/files/${user.collectionId}/${user.id}/${user.avatar}`
+    : "";
+  const defaultAvatar = user
+    ? `https://robohash.org/set_set10/bgset_bg1/${user.id}?size=200x200`
+    : "";
 
   const contentCounts = items.reduce((acc: { [key: string]: number }, item) => {
     const type = item.type || "unknown";
@@ -26,23 +32,20 @@ export default function ProfileScreen() {
     return acc;
   }, {});
 
-  const avatarUrl = useMemo(() => {
-    if (!user) return "https://api.dicebear.com/7.x/avataaars/png";
+  // const avatarUrl = useMemo(() => {
+  //   if (!user) return "https://api.dicebear.com/7.x/avataaars/png";
 
-    // If user has an avatar from PocketBase
-    if (user.avatar) {
-      // Assuming your PocketBase instance is at process.env.EXPO_PUBLIC_POCKETBASE_URL
-      return `${process.env.EXPO_PUBLIC_POCKETBASE_URL}/api/files/${user.collectionId}/${user.id}/${user.avatar}`;
-    }
+  //   if (user.avatar) {
+  //     return `${process.env.EXPO_PUBLIC_POCKETBASE_URL}/api/files/${user.collectionId}/${user.id}/${user.avatar}`;
+  //   }
 
-    // Generate a consistent avatar using Dicebear
-    const seed = user.id || user.email;
-    return `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(
-      seed
-    )}&backgroundColor=b6e3f4,c0aede,d1d4f9&backgroundType=solid&style=${
-      colorScheme === "dark" ? "transparent" : "circle"
-    }`;
-  }, [user, colorScheme]);
+  //   const seed = user.id || user.email;
+  //   return `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(
+  //     seed
+  //   )}&backgroundColor=b6e3f4,c0aede,d1d4f9&backgroundType=solid&style=${
+  //     colorScheme === "dark" ? "transparent" : "circle"
+  //   }`;
+  // }, [user, colorScheme]);
 
   const renderAuthenticatedContent = () => {
     if (!user) return null;
@@ -54,10 +57,20 @@ export default function ProfileScreen() {
             colors={[theme.colors.primary, theme.colors.primaryContainer]}
             style={styles.gradientHeader}
           >
-            <Avatar.Image
+            {/* <Avatar.Image
               size={100}
-              source={{ uri: avatarUrl }}
+              source={{
+                uri: user.avatar ? avatarUrl : defaultAvatar,
+              }}
+              // source={{ uri: avatarUrl }}
               style={styles.avatar}
+            /> */}
+            <Image
+              source={{
+                uri: user.avatar ? avatarUrl : defaultAvatar,
+              }}
+              style={styles.avatar}
+              resizeMode="cover"
             />
             <View style={styles.profileInfo}>
               <Text variant="headlineMedium" style={styles.nameText}>
@@ -182,6 +195,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     marginBottom: 16,
     borderWidth: 4,
     borderColor: "white",
