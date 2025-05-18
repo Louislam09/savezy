@@ -1,7 +1,9 @@
+import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import PocketBase from "pocketbase";
 import { useState } from "react";
 import {
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,8 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-const pb = new PocketBase("https://tick-dynamic-trout.ngrok-free.app");
+import { useDatabase } from "../../lib/DatabaseContext";
 
 const WEBSITE_CATEGORIES = [
   "Tool",
@@ -19,115 +20,127 @@ const WEBSITE_CATEGORIES = [
   "Blog",
   "Documentation",
   "Other",
-];
+] as const;
+
+type WebsiteCategory = (typeof WEBSITE_CATEGORIES)[number];
 
 export default function WebsiteForm() {
   const router = useRouter();
-  const [form, setForm] = useState({
-    url: "",
-    title: "",
-    category: "",
-  });
+  const { saveItem } = useDatabase();
+  const [url, setUrl] = useState("");
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState<WebsiteCategory | "">("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     try {
       setLoading(true);
-      const data = {
-        type: "Website",
-        url: form.url,
-        title: form.title || null,
-        category: form.category || null,
+      setError(null);
+
+      // Validate required fields
+      if (!url) {
+        setError("URL is required");
+        return;
+      }
+
+      // Create the content item
+      const content = {
+        type: "Website" as const,
+        url,
+        title: title || undefined,
+        category: category || undefined,
       };
 
-      await pb.collection("contents").create(data);
+      await saveItem(content);
       router.back();
-    } catch (error) {
-      console.error("Error saving website:", error);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save website");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.form}>
-        <Text style={styles.title}>Add Website</Text>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>URL *</Text>
-          <TextInput
-            style={styles.input}
-            value={form.url}
-            onChangeText={(text) => setForm({ ...form, url: text })}
-            placeholder="Enter website URL"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>Title (optional)</Text>
-          <TextInput
-            style={styles.input}
-            value={form.title}
-            onChangeText={(text) => setForm({ ...form, title: text })}
-            placeholder="Enter website name"
-          />
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>Category</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.categoryContainer}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
+      <ScrollView>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Feather name="x" size={24} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Save Website</Text>
+          <TouchableOpacity
+            onPress={handleSubmit}
+            disabled={loading}
+            style={loading ? styles.submitButtonDisabled : styles.submitButton}
           >
-            {WEBSITE_CATEGORIES.map((category) => (
-              <TouchableOpacity
-                key={category}
-                style={[
-                  styles.categoryButton,
-                  form.category === category && styles.categoryButtonActive,
-                ]}
-                onPress={() => setForm({ ...form, category })}
-              >
-                <Text
-                  style={[
-                    styles.categoryButtonText,
-                    form.category === category &&
-                      styles.categoryButtonTextActive,
-                  ]}
-                >
-                  {category}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+            <Text style={styles.submitButtonText}>Save</Text>
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={[
-            styles.submitButton,
-            !form.url && styles.submitButtonDisabled,
-          ]}
-          onPress={handleSubmit}
-          disabled={!form.url || loading}
-        >
-          <Text style={styles.submitButtonText}>
-            {loading ? "Saving..." : "Save Website"}
-          </Text>
-        </TouchableOpacity>
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
 
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => router.back()}
-          disabled={loading}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+        <View style={styles.form}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>URL *</Text>
+            <TextInput
+              style={styles.input}
+              value={url}
+              onChangeText={setUrl}
+              placeholder="Enter website URL"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Title (optional)</Text>
+            <TextInput
+              style={styles.input}
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Enter website name"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Category</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.categoryContainer}
+            >
+              {WEBSITE_CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.categoryButton,
+                    category === cat && styles.categoryButtonActive,
+                  ]}
+                  onPress={() => setCategory(cat)}
+                >
+                  <Text
+                    style={[
+                      styles.categoryButtonText,
+                      category === cat && styles.categoryButtonTextActive,
+                    ]}
+                  >
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -136,17 +149,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f5f5f5",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
   form: {
-    padding: 20,
-    paddingTop: 60,
+    padding: 16,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    marginBottom: 32,
-  },
-  field: {
-    marginBottom: 24,
+  inputGroup: {
+    marginBottom: 16,
   },
   label: {
     fontSize: 16,
@@ -155,8 +174,8 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: "#f5f5f5",
-    borderRadius: 12,
-    padding: 16,
+    padding: 12,
+    borderRadius: 8,
     fontSize: 16,
   },
   categoryContainer: {
@@ -181,28 +200,28 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: "#007AFF",
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   submitButtonDisabled: {
-    opacity: 0.5,
+    backgroundColor: "#ccc",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   submitButtonText: {
     color: "#fff",
-    fontSize: 18,
     fontWeight: "600",
   },
-  cancelButton: {
+  errorContainer: {
+    backgroundColor: "#FFE5E5",
     padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    backgroundColor: "#f5f5f5",
+    margin: 16,
+    borderRadius: 8,
   },
-  cancelButtonText: {
+  errorText: {
     color: "#FF3B30",
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 14,
   },
 });
