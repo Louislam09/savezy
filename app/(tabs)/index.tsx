@@ -1,3 +1,4 @@
+import { ContentType } from "@/utils/contentTypes";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
@@ -20,32 +21,42 @@ type ExtendedContentItem = ContentItem & {
   date?: string;
 };
 
-type ContentType = {
-  id: string;
+type ContentTypeConfig = {
+  id: ContentType;
   label: string;
   icon: keyof typeof Feather.glyphMap;
   form: string;
 };
 
-const contentTypes: ContentType[] = [
-  { id: "video", label: "Video", icon: "video", form: "/forms/VideoForm" },
+const contentTypes: ContentTypeConfig[] = [
   {
-    id: "meme",
+    id: ContentType.VIDEO,
+    label: "Video",
+    icon: "play-circle",
+    form: "/forms/VideoForm",
+  },
+  {
+    id: ContentType.MEME,
     label: "Meme",
-    icon: "image",
+    icon: "smile",
     form: "/forms/ImageForm?type=Meme",
   },
-  { id: "news", label: "News", icon: "file-text", form: "/forms/NewsForm" },
   {
-    id: "website",
-    label: "Website",
+    id: ContentType.NEWS,
+    label: "News",
     icon: "globe",
+    form: "/forms/NewsForm",
+  },
+  {
+    id: ContentType.WEBSITE,
+    label: "Website",
+    icon: "link-2",
     form: "/forms/WebsiteForm",
   },
   {
-    id: "image",
+    id: ContentType.IMAGE,
     label: "Image",
-    icon: "camera",
+    icon: "image",
     form: "/forms/ImageForm?type=Image",
   },
 ];
@@ -136,12 +147,21 @@ export default function HomeScreen() {
       return (
         <View style={styles.tagsRow}>
           {item.tags.map((tag, index) => (
-            <Text
+            <View
               key={index}
-              style={[styles.tagText, { color: colors.textSecondary }]}
+              style={[
+                styles.tagChip,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255, 255, 255, 0.1)"
+                    : "rgba(0, 0, 0, 0.05)",
+                },
+              ]}
             >
-              {tag.toLowerCase()}
-            </Text>
+              <Text style={[styles.tagText, { color: colors.textSecondary }]}>
+                #{tag.toLowerCase()}
+              </Text>
+            </View>
           ))}
         </View>
       );
@@ -159,7 +179,18 @@ export default function HomeScreen() {
       <TouchableOpacity
         style={[styles.itemCard, { backgroundColor: colors.card }]}
       >
-        <View style={styles.contentTypeIndicator}>
+        <View
+          style={[
+            styles.contentTypeIndicator,
+            {
+              backgroundColor: isDark
+                ? "rgba(0, 0, 0, 0.5)"
+                : "rgba(255, 255, 255, 0.9)",
+              borderWidth: isDark ? 0 : 1,
+              borderColor: colors.cardBorder,
+            },
+          ]}
+        >
           <Feather
             name={contentTypes.find((t) => t.id === item.type)?.icon || "file"}
             size={16}
@@ -252,24 +283,42 @@ export default function HomeScreen() {
 
       <View style={styles.filters}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {["All", "Video", "Meme", "News", "Website", "Image"].map((type) => (
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              { backgroundColor: colors.buttonBackground },
+              !selectedType && { backgroundColor: colors.accent },
+            ]}
+            onPress={() => setSelectedType(null)}
+          >
+            <Text
+              style={[
+                styles.filterButtonText,
+                { color: colors.textSecondary },
+                !selectedType && { color: colors.text },
+              ]}
+            >
+              All
+            </Text>
+          </TouchableOpacity>
+          {contentTypes.map((type) => (
             <TouchableOpacity
-              key={type}
+              key={type.id}
               style={[
                 styles.filterButton,
                 { backgroundColor: colors.buttonBackground },
-                selectedType === type && { backgroundColor: colors.accent },
+                selectedType === type.id && { backgroundColor: colors.accent },
               ]}
-              onPress={() => setSelectedType(type === "All" ? null : type)}
+              onPress={() => setSelectedType(type.id)}
             >
               <Text
                 style={[
                   styles.filterButtonText,
                   { color: colors.textSecondary },
-                  selectedType === type && { color: colors.text },
+                  selectedType === type.id && { color: colors.text },
                 ]}
               >
-                {type}
+                {type.label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -454,7 +503,6 @@ const styles = StyleSheet.create({
     top: 16,
     left: 16,
     zIndex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -490,12 +538,17 @@ const styles = StyleSheet.create({
   },
   tagsRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
+  tagChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
   tagText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "500",
-    opacity: 0.8,
   },
   dateText: {
     fontSize: 14,

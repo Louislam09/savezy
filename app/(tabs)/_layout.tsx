@@ -1,9 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import { useLanguage } from "../../lib/LanguageContext";
 import { useTheme } from "../../lib/ThemeContext";
 
 export default function TabLayout() {
   const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
 
   return (
     <Tabs
@@ -30,27 +32,27 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: t("tabs.home"),
           tabBarIcon: ({ color, size }) => (
             <Feather name="home" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="saved"
+        name="profile"
         options={{
-          title: "Saved",
+          title: t("tabs.profile"),
           tabBarIcon: ({ color, size }) => (
-            <Feather name="bookmark" size={size} color={color} />
+            <Feather name="user" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="settings"
         options={{
-          title: "Profile",
+          title: t("tabs.settings"),
           tabBarIcon: ({ color, size }) => (
-            <Feather name="user" size={size} color={color} />
+            <Feather name="settings" size={size} color={color} />
           ),
         }}
       />

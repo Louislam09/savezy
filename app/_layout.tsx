@@ -2,26 +2,29 @@ import { ThemeProvider } from "@/lib/ThemeContext";
 import { Stack } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
 import { DatabaseProvider } from "../lib/DatabaseContext";
+import { LanguageProvider } from "../lib/LanguageContext";
 import { initDatabase } from "../lib/database";
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <SQLiteProvider databaseName="savezy.db" onInit={initDatabase}>
-        <DatabaseProvider>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="forms"
-              options={{
-                headerShown: false,
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
-            />
-          </Stack>
-        </DatabaseProvider>
-      </SQLiteProvider>
-    </ThemeProvider>
+    <LanguageProvider>
+      <ThemeProvider>
+        <SQLiteProvider databaseName="savezy.db" onInit={initDatabase}>
+          <DatabaseProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="forms"
+                options={{
+                  headerShown: false,
+                  presentation: "modal",
+                  animation: "slide_from_bottom",
+                }}
+              />
+            </Stack>
+          </DatabaseProvider>
+        </SQLiteProvider>
+      </ThemeProvider>
+    </LanguageProvider>
   );
 }
