@@ -359,7 +359,7 @@ export default function HomeScreen() {
         style={[styles.addButton, { backgroundColor: colors.accent }]}
         onPress={handleAddNew}
       >
-        <Feather name="plus-circle" size={32} color="#fff" />
+        <Feather name="plus" size={32} color="#fff" />
       </TouchableOpacity>
 
       {showTypeSelector && (
