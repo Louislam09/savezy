@@ -62,8 +62,15 @@ const SettingItem = ({
   );
 };
 
+const MAIN_COLOR_OPTIONS = [
+  { name: "Pink", value: "#F87171" },
+  { name: "Blue", value: "#60A5FA" },
+  { name: "Yellow", value: "#FBBF24" },
+  { name: "Purple", value: "#A78BFA" },
+];
+
 export default function SettingsScreen() {
-  const { colors, isDark, toggleTheme } = useTheme();
+  const { colors, isDark, toggleTheme, mainColor, setMainColor } = useTheme();
   const { language, setLanguage, t } = useLanguage();
 
   const handleLanguageChange = useCallback(() => {
@@ -87,6 +94,24 @@ export default function SettingsScreen() {
       { cancelable: true }
     );
   }, [setLanguage, t]);
+
+  const handleMainColorChange = useCallback(() => {
+    Alert.alert(
+      "Select Main Color",
+      "",
+      [
+        ...MAIN_COLOR_OPTIONS.map((option) => ({
+          text: option.name,
+          onPress: () => setMainColor(option.value),
+        })),
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ],
+      { cancelable: true }
+    );
+  }, [setMainColor]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -113,6 +138,15 @@ export default function SettingsScreen() {
             icon="bell"
             label={t("settings.notifications")}
             onPress={() => {}}
+          />
+          <SettingItem
+            icon="droplet"
+            label={"Main Color"}
+            value={
+              MAIN_COLOR_OPTIONS.find((option) => option.value === mainColor)
+                ?.name || ""
+            }
+            onPress={handleMainColorChange}
           />
         </View>
 

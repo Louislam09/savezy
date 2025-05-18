@@ -9,17 +9,21 @@ export type ThemeColors = {
   accent: string;
   buttonBackground: string;
   searchBackground: string;
+  mainColor: string;
 };
 
+const defaultMainColor = "#60A5FA";
+
 export const lightTheme: ThemeColors = {
-  background: "#F2F2F7",
+  background: "#F9FAFB",
   card: "#FFFFFF",
   cardBorder: "#E5E5EA",
   text: "#000000",
   textSecondary: "#6C6C70",
-  accent: "#007AFF",
+  accent: "#A78BFA",
   buttonBackground: "#FFFFFF",
   searchBackground: "#FFFFFF",
+  mainColor: defaultMainColor,
 };
 
 export const darkTheme: ThemeColors = {
@@ -28,30 +32,42 @@ export const darkTheme: ThemeColors = {
   cardBorder: "#2C2C2E",
   text: "#FFFFFF",
   textSecondary: "#8E8E93",
-  accent: "#0A84FF",
+  accent: "#A78BFA",
   buttonBackground: "#1C1C1E",
   searchBackground: "#1C1C1E",
+  mainColor: defaultMainColor,
 };
 
 type ThemeContextType = {
   isDark: boolean;
   toggleTheme: () => void;
   colors: ThemeColors;
+  mainColor: string;
+  setMainColor: (color: string) => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState(true);
+  const [mainColor, setMainColor] = useState(defaultMainColor);
 
   const toggleTheme = () => {
     setIsDark((prev) => !prev);
   };
 
+  const themeColors = {
+    ...(isDark ? darkTheme : lightTheme),
+    mainColor,
+    accent: mainColor,
+  };
+
   const value = {
     isDark,
     toggleTheme,
-    colors: isDark ? darkTheme : lightTheme,
+    colors: themeColors,
+    mainColor,
+    setMainColor,
   };
 
   return (
