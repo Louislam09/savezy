@@ -13,7 +13,12 @@ import {
   View,
 } from "react-native";
 import { useDatabase } from "../../lib/DatabaseContext";
+import { useTheme } from "../../lib/ThemeContext";
 import { ContentItem } from "../../lib/database";
+
+type ExtendedContentItem = ContentItem & {
+  date?: string;
+};
 
 type ContentType = {
   id: string;
@@ -66,6 +71,7 @@ const EmptyState = ({ onAddNew }: { onAddNew: () => void }) => {
 export default function HomeScreen() {
   const router = useRouter();
   const { items, loading, deleteItem } = useDatabase();
+  const { colors, isDark, toggleTheme } = useTheme();
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string | null>(null);
@@ -88,7 +94,7 @@ export default function HomeScreen() {
     }
   }, [items]);
 
-  const getPreviewUrl = (item: ContentItem) => {
+  const getPreviewUrl = (item: ExtendedContentItem) => {
     if (!item.url || !item.id) return null;
     return previews[item.id] || null;
   };
@@ -124,64 +130,120 @@ export default function HomeScreen() {
     }
   };
 
-  const renderItem = ({ item }: { item: ContentItem }) => (
-    <TouchableOpacity style={styles.itemCard}>
-      {item.url ? (
-        <Image
-          source={getPreviewUrl(item) || undefined}
-          style={styles.itemImage}
-          contentFit="cover"
-        />
-      ) : item.imageUrl ? (
-        <Image
-          source={item.imageUrl}
-          style={styles.itemImage}
-          contentFit="cover"
-        />
-      ) : null}
-      <View style={styles.itemContent}>
-        <View style={styles.itemHeader}>
-          <Text style={styles.itemTitle}>{item.title || "Untitled"}</Text>
-          <Text style={styles.itemType}>{item.type}</Text>
+  const renderItem = ({ item }: { item: ExtendedContentItem }) => {
+    const renderTags = () => {
+      if (!item.tags || item.tags.length === 0) return null;
+      return (
+        <View style={styles.tagsRow}>
+          {item.tags.map((tag, index) => (
+            <Text
+              key={index}
+              style={[styles.tagText, { color: colors.textSecondary }]}
+            >
+              {tag.toLowerCase()}
+            </Text>
+          ))}
         </View>
-        {item.description && (
-          <Text style={styles.itemDescription} numberOfLines={2}>
-            {item.description}
+      );
+    };
+
+    const renderDate = () => {
+      return (
+        <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+          {item.date || "Apr 30, 2025"}
+        </Text>
+      );
+    };
+
+    return (
+      <TouchableOpacity
+        style={[styles.itemCard, { backgroundColor: colors.card }]}
+      >
+        <View style={styles.contentTypeIndicator}>
+          <Feather
+            name={contentTypes.find((t) => t.id === item.type)?.icon || "file"}
+            size={16}
+            color={colors.text}
+          />
+          <Text style={[styles.contentTypeText, { color: colors.text }]}>
+            {item.type}
           </Text>
-        )}
-        {item.url && (
-          <Text style={styles.itemUrl} numberOfLines={1}>
-            {item.url}
+        </View>
+
+        {item.url ? (
+          <Image
+            source={getPreviewUrl(item) || undefined}
+            style={styles.itemImage}
+            contentFit="cover"
+            placeholder={null}
+            transition={200}
+          />
+        ) : item.imageUrl ? (
+          <Image
+            source={item.imageUrl}
+            style={styles.itemImage}
+            contentFit="cover"
+            placeholder={null}
+            transition={200}
+          />
+        ) : null}
+
+        <View style={styles.itemContent}>
+          <Text
+            style={[styles.itemTitle, { color: colors.text }]}
+            numberOfLines={2}
+          >
+            {item.title || "Untitled"}
           </Text>
-        )}
-        {item.tags && item.tags.length > 0 && (
-          <View style={styles.tagsContainer}>
-            {item.tags.map((tag, index) => (
-              <Text key={index} style={styles.tag}>
-                #{tag}
-              </Text>
-            ))}
+
+          {item.description && (
+            <Text
+              style={[styles.itemDescription, { color: colors.textSecondary }]}
+              numberOfLines={2}
+            >
+              {item.description}
+            </Text>
+          )}
+
+          <View style={styles.itemFooter}>
+            {renderTags()}
+            {renderDate()}
           </View>
-        )}
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => item.id && handleDelete(item.id)}
-        >
-          <Feather name="trash-2" size={20} color="#FF3B30" />
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Savezy</Text>
-        <View style={styles.searchContainer}>
-          <Feather name="search" size={20} color="#8E8E93" />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
+        <View style={styles.headerTop}>
+          <Text style={[styles.title, { color: colors.text }]}>Savezy</Text>
+          <TouchableOpacity
+            style={[
+              styles.themeButton,
+              { backgroundColor: colors.buttonBackground },
+            ]}
+            onPress={toggleTheme}
+          >
+            <Feather
+              name={isDark ? "sun" : "moon"}
+              size={20}
+              color={colors.text}
+            />
+          </TouchableOpacity>
+        </View>
+        <View
+          style={[
+            styles.searchContainer,
+            { backgroundColor: colors.searchBackground },
+          ]}
+        >
+          <Feather name="search" size={20} color={colors.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Search saved items..."
+            placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -195,14 +257,16 @@ export default function HomeScreen() {
               key={type}
               style={[
                 styles.filterButton,
-                selectedType === type && styles.filterButtonActive,
+                { backgroundColor: colors.buttonBackground },
+                selectedType === type && { backgroundColor: colors.accent },
               ]}
               onPress={() => setSelectedType(type === "All" ? null : type)}
             >
               <Text
                 style={[
                   styles.filterButtonText,
-                  selectedType === type && styles.filterButtonTextActive,
+                  { color: colors.textSecondary },
+                  selectedType === type && { color: colors.text },
                 ]}
               >
                 {type}
@@ -213,8 +277,13 @@ export default function HomeScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <Text>Loading...</Text>
+        <View
+          style={[
+            styles.loadingContainer,
+            { backgroundColor: colors.background },
+          ]}
+        >
+          <Text style={{ color: colors.text }}>Loading...</Text>
         </View>
       ) : filteredItems.length === 0 ? (
         <EmptyState onAddNew={handleAddNew} />
@@ -228,30 +297,49 @@ export default function HomeScreen() {
         />
       )}
 
-      <TouchableOpacity style={styles.addButton} onPress={handleAddNew}>
+      <TouchableOpacity
+        style={[styles.addButton, { backgroundColor: colors.accent }]}
+        onPress={handleAddNew}
+      >
         <Feather name="plus-circle" size={32} color="#fff" />
       </TouchableOpacity>
 
       {showTypeSelector && (
         <BlurView intensity={90} style={styles.modal}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>What would you like to save?</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              What would you like to save?
+            </Text>
             {contentTypes.map((type) => (
               <TouchableOpacity
                 key={type.id}
-                style={styles.typeButton}
+                style={[
+                  styles.typeButton,
+                  { backgroundColor: colors.buttonBackground },
+                ]}
                 onPress={() => handleSelectType(type.form)}
               >
-                <Feather name={type.icon} size={24} color="#007AFF" />
-                <Text style={styles.typeButtonText}>{type.label}</Text>
-                <Feather name="chevron-right" size={24} color="#8E8E93" />
+                <Feather name={type.icon} size={24} color={colors.accent} />
+                <Text style={[styles.typeButtonText, { color: colors.text }]}>
+                  {type.label}
+                </Text>
+                <Feather
+                  name="chevron-right"
+                  size={24}
+                  color={colors.textSecondary}
+                />
               </TouchableOpacity>
             ))}
             <TouchableOpacity
-              style={styles.cancelButton}
+              style={[
+                styles.cancelButton,
+                { backgroundColor: colors.buttonBackground },
+              ]}
               onPress={() => setShowTypeSelector(false)}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={[styles.cancelButtonText, { color: colors.accent }]}>
+                Cancel
+              </Text>
             </TouchableOpacity>
           </View>
         </BlurView>
@@ -263,29 +351,38 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#000000",
   },
   header: {
     padding: 20,
     paddingTop: 60,
-    backgroundColor: "#fff",
+    backgroundColor: "#000000",
   },
   title: {
     fontSize: 32,
     fontWeight: "bold",
     marginBottom: 16,
+    color: "#FFFFFF",
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f5f5f5",
     borderRadius: 12,
     padding: 12,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   searchInput: {
     flex: 1,
     marginLeft: 8,
     fontSize: 16,
+    color: "#FFFFFF",
   },
   filters: {
     paddingHorizontal: 20,
@@ -295,24 +392,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#f5f5f5",
     marginRight: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   filterButtonActive: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#0A84FF",
   },
   filterButtonText: {
     fontSize: 14,
-    color: "#666",
+    color: "#8E8E93",
   },
   filterButtonTextActive: {
-    color: "#fff",
+    color: "#FFFFFF",
   },
   addButton: {
     position: "absolute",
     bottom: 24,
     right: 24,
-    backgroundColor: "#007AFF",
+    backgroundColor: "#0A84FF",
     width: 64,
     height: 64,
     borderRadius: 32,
@@ -330,73 +434,72 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   itemCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 16,
+    overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
+  contentTypeIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    position: "absolute",
+    top: 16,
+    left: 16,
+    zIndex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  contentTypeText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
   itemImage: {
     width: "100%",
     height: 200,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
   },
   itemContent: {
-    padding: 16,
+    padding: 20,
   },
-  itemHeader: {
+  itemTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 8,
+    lineHeight: 28,
+  },
+  itemDescription: {
+    fontSize: 15,
+    marginBottom: 16,
+    lineHeight: 22,
+    opacity: 0.8,
+  },
+  itemFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
-  },
-  itemTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    flex: 1,
-  },
-  itemType: {
-    fontSize: 14,
-    color: "#007AFF",
-    backgroundColor: "#E5F1FF",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  itemDescription: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 8,
-  },
-  itemUrl: {
-    fontSize: 14,
-    color: "#007AFF",
-    marginTop: 4,
-    marginBottom: 8,
-  },
-  tagsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
     marginTop: 8,
   },
-  tag: {
-    fontSize: 14,
-    color: "#666",
-    backgroundColor: "#f5f5f5",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginRight: 8,
-    marginBottom: 8,
+  tagsRow: {
+    flexDirection: "row",
+    gap: 8,
   },
-  deleteButton: {
-    position: "absolute",
-    bottom: 16,
-    right: 16,
+  tagText: {
+    fontSize: 14,
+    fontWeight: "500",
+    opacity: 0.8,
+  },
+  dateText: {
+    fontSize: 14,
+    opacity: 0.8,
   },
   modal: {
     position: "absolute",
@@ -407,7 +510,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#fff",
+    backgroundColor: "#1C1C1E",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -417,25 +520,27 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 20,
     textAlign: "center",
+    color: "#FFFFFF",
   },
   typeButton: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
     borderRadius: 12,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#2C2C2E",
     marginBottom: 12,
   },
   typeButtonText: {
     flex: 1,
     fontSize: 18,
     marginLeft: 12,
+    color: "#FFFFFF",
   },
   cancelButton: {
     marginTop: 8,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#2C2C2E",
   },
   cancelButtonText: {
     color: "#FF3B30",
@@ -453,7 +558,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: "#F2F2F7",
+    backgroundColor: "#1C1C1E",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 24,
@@ -462,15 +567,16 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
     marginBottom: 8,
+    color: "#FFFFFF",
   },
   emptyDescription: {
     fontSize: 16,
-    color: "#666",
+    color: "#8E8E93",
     textAlign: "center",
     marginBottom: 24,
   },
   emptyButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#0A84FF",
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
@@ -484,6 +590,20 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#000000",
+  },
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  themeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },
