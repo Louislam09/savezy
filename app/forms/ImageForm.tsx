@@ -14,12 +14,16 @@ import {
   View,
 } from "react-native";
 import { useDatabase } from "../../lib/DatabaseContext";
+import { useLanguage } from "../../lib/LanguageContext";
+import { useTheme } from "../../lib/ThemeContext";
 
 type ImageSource = "url" | "upload";
 
 export default function ImageForm() {
   const router = useRouter();
   const { saveItem } = useDatabase();
+  const { t } = useLanguage();
+  const { colors, mainColor } = useTheme();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -103,20 +107,29 @@ export default function ImageForm() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <ScrollView>
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Feather name="x" size={24} color="#000" />
+            <Feather name="x" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Save Image</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t("common.saveNewContent")}
+          </Text>
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={loading}
-            style={loading ? styles.submitButtonDisabled : styles.submitButton}
+            style={
+              loading
+                ? [
+                    styles.submitButtonDisabled,
+                    { backgroundColor: colors.cardBorder },
+                  ]
+                : [styles.submitButton, { backgroundColor: mainColor }]
+            }
           >
-            <Text style={styles.submitButtonText}>Save</Text>
+            <Text style={styles.submitButtonText}>{t("actions.save")}</Text>
           </TouchableOpacity>
         </View>
 
@@ -128,22 +141,41 @@ export default function ImageForm() {
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Title</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t("common.saveNew")}
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.searchBackground,
+                  color: colors.text,
+                },
+              ]}
               value={title}
               onChangeText={setTitle}
-              placeholder="Enter title"
+              placeholder={t("common.saveNew")}
+              placeholderTextColor={colors.textSecondary}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t("common.saveNew")}
+            </Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[
+                styles.input,
+                styles.textArea,
+                {
+                  backgroundColor: colors.searchBackground,
+                  color: colors.text,
+                },
+              ]}
               value={description}
               onChangeText={setDescription}
-              placeholder="Enter description"
+              placeholder={t("common.saveNew")}
+              placeholderTextColor={colors.textSecondary}
               multiline
               numberOfLines={4}
             />
@@ -154,21 +186,26 @@ export default function ImageForm() {
               style={[
                 styles.sourceButton,
                 imageSource === "url" && styles.sourceButtonActive,
+                {
+                  backgroundColor:
+                    imageSource === "url" ? mainColor : colors.searchBackground,
+                },
               ]}
               onPress={() => setImageSource("url")}
             >
               <Feather
                 name="link"
                 size={20}
-                color={imageSource === "url" ? "#fff" : "#007AFF"}
+                color={imageSource === "url" ? "#fff" : mainColor}
               />
               <Text
                 style={[
                   styles.sourceButtonText,
                   imageSource === "url" && styles.sourceButtonTextActive,
+                  { color: imageSource === "url" ? "#fff" : mainColor },
                 ]}
               >
-                URL
+                {t("contentTypes.website")}
               </Text>
             </TouchableOpacity>
 
@@ -176,42 +213,68 @@ export default function ImageForm() {
               style={[
                 styles.sourceButton,
                 imageSource === "upload" && styles.sourceButtonActive,
+                {
+                  backgroundColor:
+                    imageSource === "upload"
+                      ? mainColor
+                      : colors.searchBackground,
+                },
               ]}
               onPress={() => setImageSource("upload")}
             >
               <Feather
                 name="upload"
                 size={20}
-                color={imageSource === "upload" ? "#fff" : "#007AFF"}
+                color={imageSource === "upload" ? "#fff" : mainColor}
               />
               <Text
                 style={[
                   styles.sourceButtonText,
                   imageSource === "upload" && styles.sourceButtonTextActive,
+                  { color: imageSource === "upload" ? "#fff" : mainColor },
                 ]}
               >
-                Upload
+                {t("actions.add")}
               </Text>
             </TouchableOpacity>
           </View>
 
           {imageSource === "url" ? (
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Image URL</Text>
+              <Text style={[styles.label, { color: colors.text }]}>
+                {t("contentTypes.image") + " URL"}
+              </Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.searchBackground,
+                    color: colors.text,
+                  },
+                ]}
                 value={imageUrl}
                 onChangeText={setImageUrl}
-                placeholder="Enter image URL"
+                placeholder={t("contentTypes.image") + " URL"}
+                placeholderTextColor={colors.textSecondary}
               />
             </View>
           ) : (
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Upload Image</Text>
-              <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
-                <Feather name="upload" size={24} color="#007AFF" />
-                <Text style={styles.uploadButtonText}>
-                  {selectedImage ? "Change Image" : "Select Image"}
+              <Text style={[styles.label, { color: colors.text }]}>
+                {t("actions.add") + " " + t("contentTypes.image")}
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.uploadButton,
+                  { backgroundColor: colors.searchBackground },
+                ]}
+                onPress={pickImage}
+              >
+                <Feather name="upload" size={24} color={mainColor} />
+                <Text style={[styles.uploadButtonText, { color: mainColor }]}>
+                  {selectedImage
+                    ? t("actions.edit") + " " + t("contentTypes.image")
+                    : t("actions.add") + " " + t("contentTypes.image")}
                 </Text>
               </TouchableOpacity>
               {selectedImage && (
@@ -221,13 +284,23 @@ export default function ImageForm() {
           )}
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Tags</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t("common.all")}
+            </Text>
             <View style={styles.tagInputContainer}>
               <TextInput
-                style={[styles.input, styles.tagInput]}
+                style={[
+                  styles.input,
+                  styles.tagInput,
+                  {
+                    backgroundColor: colors.searchBackground,
+                    color: colors.text,
+                  },
+                ]}
                 value={currentTag}
                 onChangeText={setCurrentTag}
-                placeholder="Type a tag and press Enter"
+                placeholder={t("common.all")}
+                placeholderTextColor={colors.textSecondary}
                 onSubmitEditing={handleAddTag}
                 blurOnSubmit={false}
                 returnKeyType="done"
@@ -243,7 +316,7 @@ export default function ImageForm() {
                 <Feather
                   name="plus"
                   size={20}
-                  color={currentTag.trim() ? "#fff" : "#999"}
+                  color={currentTag.trim() ? "#fff" : colors.textSecondary}
                 />
               </TouchableOpacity>
             </View>

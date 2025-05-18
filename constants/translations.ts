@@ -49,6 +49,7 @@ export const translations = {
       off: "Off",
       addNewItem: "What would you like to save?",
       saveNewContent: "Save New Content",
+      optional: "optional",
     },
     alerts: {
       deleteConfirm: "Are you sure you want to delete this item?",
@@ -118,6 +119,7 @@ export const translations = {
       off: "Desactivado",
       addNewItem: "¿Qué te gustaría guardar?",
       saveNewContent: "Guardar Nuevo Contenido",
+      optional: "opcional",
     },
     alerts: {
       deleteConfirm: "¿Estás seguro de que quieres eliminar este elemento?",

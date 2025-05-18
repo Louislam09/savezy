@@ -12,10 +12,14 @@ import {
   View,
 } from "react-native";
 import { useDatabase } from "../../lib/DatabaseContext";
+import { useLanguage } from "../../lib/LanguageContext";
+import { useTheme } from "../../lib/ThemeContext";
 
 export default function NewsForm() {
   const router = useRouter();
   const { saveItem } = useDatabase();
+  const { t } = useLanguage();
+  const { colors, mainColor } = useTheme();
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [summary, setSummary] = useState("");
@@ -75,20 +79,29 @@ export default function NewsForm() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <ScrollView>
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Feather name="x" size={24} color="#000" />
+            <Feather name="x" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Save News Article</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t("common.saveNewContent")}
+          </Text>
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={loading}
-            style={loading ? styles.submitButtonDisabled : styles.submitButton}
+            style={
+              loading
+                ? [
+                    styles.submitButtonDisabled,
+                    { backgroundColor: colors.cardBorder },
+                  ]
+                : [styles.submitButton, { backgroundColor: mainColor }]
+            }
           >
-            <Text style={styles.submitButtonText}>Save</Text>
+            <Text style={styles.submitButtonText}>{t("actions.save")}</Text>
           </TouchableOpacity>
         </View>
 
@@ -100,34 +113,62 @@ export default function NewsForm() {
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Title *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t("common.saveNew") + " *"}
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.searchBackground,
+                  color: colors.text,
+                },
+              ]}
               value={title}
               onChangeText={setTitle}
-              placeholder="Enter article title"
+              placeholder={t("common.saveNew")}
+              placeholderTextColor={colors.textSecondary}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>URL *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t("contentTypes.news") + " *"}
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.searchBackground,
+                  color: colors.text,
+                },
+              ]}
               value={url}
               onChangeText={setUrl}
-              placeholder="Enter article URL"
+              placeholder={t("contentTypes.news")}
+              placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Summary</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t("common.saveNew")}
+            </Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[
+                styles.input,
+                styles.textArea,
+                {
+                  backgroundColor: colors.searchBackground,
+                  color: colors.text,
+                },
+              ]}
               value={summary}
               onChangeText={setSummary}
-              placeholder="Write a brief summary of the article"
+              placeholder={t("common.saveNew")}
+              placeholderTextColor={colors.textSecondary}
               multiline
               numberOfLines={4}
               textAlignVertical="top"
@@ -135,13 +176,23 @@ export default function NewsForm() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Tags</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t("common.all")}
+            </Text>
             <View style={styles.tagInputContainer}>
               <TextInput
-                style={[styles.input, styles.tagInput]}
+                style={[
+                  styles.input,
+                  styles.tagInput,
+                  {
+                    backgroundColor: colors.searchBackground,
+                    color: colors.text,
+                  },
+                ]}
                 value={currentTag}
                 onChangeText={setCurrentTag}
-                placeholder="Type a tag and press Enter"
+                placeholder={t("common.all")}
+                placeholderTextColor={colors.textSecondary}
                 onSubmitEditing={handleAddTag}
                 blurOnSubmit={false}
                 returnKeyType="done"
@@ -157,7 +208,7 @@ export default function NewsForm() {
                 <Feather
                   name="plus"
                   size={20}
-                  color={currentTag.trim() ? "#fff" : "#999"}
+                  color={currentTag.trim() ? "#fff" : colors.textSecondary}
                 />
               </TouchableOpacity>
             </View>

@@ -12,6 +12,8 @@ import {
   View,
 } from "react-native";
 import { useDatabase } from "../../lib/DatabaseContext";
+import { useLanguage } from "../../lib/LanguageContext";
+import { useTheme } from "../../lib/ThemeContext";
 
 const WEBSITE_CATEGORIES = [
   "Tool",
@@ -27,6 +29,8 @@ type WebsiteCategory = (typeof WEBSITE_CATEGORIES)[number];
 export default function WebsiteForm() {
   const router = useRouter();
   const { saveItem } = useDatabase();
+  const { t } = useLanguage();
+  const { colors, mainColor } = useTheme();
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<WebsiteCategory | "">("");
@@ -64,20 +68,29 @@ export default function WebsiteForm() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <ScrollView>
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Feather name="x" size={24} color="#000" />
+            <Feather name="x" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Save Website</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t("common.saveNewContent")}
+          </Text>
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={loading}
-            style={loading ? styles.submitButtonDisabled : styles.submitButton}
+            style={
+              loading
+                ? [
+                    styles.submitButtonDisabled,
+                    { backgroundColor: colors.cardBorder },
+                  ]
+                : [styles.submitButton, { backgroundColor: mainColor }]
+            }
           >
-            <Text style={styles.submitButtonText}>Save</Text>
+            <Text style={styles.submitButtonText}>{t("actions.save")}</Text>
           </TouchableOpacity>
         </View>
 
@@ -89,29 +102,54 @@ export default function WebsiteForm() {
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>URL *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t("common.saveNew") + " URL *"}
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.searchBackground,
+                  color: colors.text,
+                },
+              ]}
               value={url}
               onChangeText={setUrl}
-              placeholder="Enter website URL"
+              placeholder={t("common.saveNew") + " URL"}
+              placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Title (optional)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t("common.saveNew") +
+                " " +
+                t("common.all") +
+                " (" +
+                t("common.optional") +
+                ")"}
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.searchBackground,
+                  color: colors.text,
+                },
+              ]}
               value={title}
               onChangeText={setTitle}
-              placeholder="Enter website name"
+              placeholder={t("common.saveNew") + " " + t("common.all")}
+              placeholderTextColor={colors.textSecondary}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Category</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t("contentTypes.website") + " " + t("common.all")}
+            </Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -122,17 +160,22 @@ export default function WebsiteForm() {
                   key={cat}
                   style={[
                     styles.categoryButton,
-                    category === cat && styles.categoryButtonActive,
+                    {
+                      backgroundColor:
+                        category === cat ? mainColor : colors.searchBackground,
+                    },
                   ]}
                   onPress={() => setCategory(cat)}
                 >
                   <Text
                     style={[
                       styles.categoryButtonText,
-                      category === cat && styles.categoryButtonTextActive,
+                      {
+                        color: category === cat ? "#fff" : colors.textSecondary,
+                      },
                     ]}
                   >
-                    {cat}
+                    {t("contentTypes.website") + ": " + cat}
                   </Text>
                 </TouchableOpacity>
               ))}
