@@ -11,6 +11,8 @@ export const translations = {
       version: "Version",
       darkMode: "Dark Mode",
       selectLanguage: "Select Language",
+      mainColor: "Main Color",
+      selectMainColor: "Select Main Color",
     },
     languages: {
       en: "English",
@@ -77,6 +79,8 @@ export const translations = {
       version: "Versión",
       darkMode: "Modo Oscuro",
       selectLanguage: "Seleccionar Idioma",
+      mainColor: "Color Principal",
+      selectMainColor: "Seleccionar Color Principal",
     },
     languages: {
       en: "Inglés",

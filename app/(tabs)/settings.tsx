@@ -1,7 +1,8 @@
 import { Feather } from "@expo/vector-icons";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import {
   Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -73,6 +74,8 @@ export default function SettingsScreen() {
   const { colors, isDark, toggleTheme, mainColor, setMainColor } = useTheme();
   const { language, setLanguage, t } = useLanguage();
 
+  const [colorModalVisible, setColorModalVisible] = useState(false);
+
   const handleLanguageChange = useCallback(() => {
     Alert.alert(
       t("settings.selectLanguage"),
@@ -96,22 +99,13 @@ export default function SettingsScreen() {
   }, [setLanguage, t]);
 
   const handleMainColorChange = useCallback(() => {
-    Alert.alert(
-      "Select Main Color",
-      "",
-      [
-        ...MAIN_COLOR_OPTIONS.map((option) => ({
-          text: option.name,
-          onPress: () => setMainColor(option.value),
-        })),
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-      ],
-      { cancelable: true }
-    );
-  }, [setMainColor]);
+    setColorModalVisible(true);
+  }, []);
+
+  const handleSelectColor = (color: string) => {
+    setMainColor(color);
+    setColorModalVisible(false);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -141,7 +135,7 @@ export default function SettingsScreen() {
           />
           <SettingItem
             icon="droplet"
-            label={"Main Color"}
+            label={t("settings.mainColor")}
             value={
               MAIN_COLOR_OPTIONS.find((option) => option.value === mainColor)
                 ?.name || ""
@@ -165,6 +159,69 @@ export default function SettingsScreen() {
           />
         </View>
       </ScrollView>
+
+      {/* Main Color Modal */}
+      <Modal
+        visible={colorModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setColorModalVisible(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "rgba(0,0,0,0.4)",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: 16,
+              padding: 24,
+              alignItems: "center",
+              minWidth: 280,
+            }}
+          >
+            <Text
+              style={{
+                color: colors.text,
+                fontSize: 18,
+                fontWeight: "bold",
+                marginBottom: 16,
+              }}
+            >
+              {t("settings.selectMainColor")}
+            </Text>
+            <View style={{ flexDirection: "row", marginBottom: 24 }}>
+              {MAIN_COLOR_OPTIONS.map((option, idx) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    backgroundColor: option.value,
+                    borderWidth: mainColor === option.value ? 3 : 1,
+                    borderColor:
+                      mainColor === option.value
+                        ? colors.text
+                        : colors.cardBorder,
+                    marginRight: idx !== MAIN_COLOR_OPTIONS.length - 1 ? 16 : 0,
+                  }}
+                  onPress={() => handleSelectColor(option.value)}
+                />
+              ))}
+            </View>
+            <TouchableOpacity onPress={() => setColorModalVisible(false)}>
+              <Text style={{ color: colors.textSecondary, fontSize: 16 }}>
+                {t("actions.cancel")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
