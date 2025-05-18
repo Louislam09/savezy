@@ -1,9 +1,13 @@
 import { Feather } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 import { useDatabase } from "../../lib/DatabaseContext";
+import { useLanguage } from "../../lib/LanguageContext";
+import { useTheme } from "../../lib/ThemeContext";
 
 export default function ProfileScreen() {
   const { items } = useDatabase();
+  const { t } = useLanguage();
+  const { colors } = useTheme();
 
   // Calculate statistics
   const totalItems = items.length;
@@ -13,32 +17,45 @@ export default function ProfileScreen() {
   }, {} as Record<string, number>);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Feather name="bar-chart-2" size={64} color="#007AFF" />
-        <Text style={styles.title}>Savezy Stats</Text>
+        <Feather name="bar-chart-2" size={64} color={colors.accent} />
+        <Text style={[styles.title, { color: colors.text }]}>
+          {t("profile.stats")}
+        </Text>
       </View>
 
       <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{totalItems}</Text>
-          <Text style={styles.statLabel}>Total Items</Text>
+        <View style={[styles.statCard, { backgroundColor: colors.card }]}>
+          <Text style={[styles.statValue, { color: colors.accent }]}>
+            {totalItems}
+          </Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+            {t("profile.totalItems")}
+          </Text>
         </View>
 
         {Object.entries(itemsByType).map(([type, count]) => (
-          <View key={type} style={styles.statCard}>
-            <Text style={styles.statValue}>{count}</Text>
-            <Text style={styles.statLabel}>{type}s</Text>
+          <View
+            key={type}
+            style={[styles.statCard, { backgroundColor: colors.card }]}
+          >
+            <Text style={[styles.statValue, { color: colors.accent }]}>
+              {count}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+              {t(("contentTypes." + type.toLowerCase()) as any)}
+            </Text>
           </View>
         ))}
       </View>
 
-      <View style={styles.aboutContainer}>
-        <Text style={styles.aboutTitle}>About Savezy</Text>
-        <Text style={styles.aboutText}>
-          Savezy helps you save and organize interesting content you find
-          online. Save videos, memes, news articles, websites, and images all in
-          one place.
+      <View style={[styles.aboutContainer, { backgroundColor: colors.card }]}>
+        <Text style={[styles.aboutTitle, { color: colors.text }]}>
+          {t("profile.aboutTitle")}
+        </Text>
+        <Text style={[styles.aboutText, { color: colors.textSecondary }]}>
+          {t("profile.aboutText")}
         </Text>
       </View>
     </View>
@@ -48,7 +65,6 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
     padding: 20,
     paddingTop: 60,
   },
@@ -68,7 +84,6 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   statCard: {
-    backgroundColor: "#f5f5f5",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -78,15 +93,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#007AFF",
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 16,
-    color: "#666",
   },
   aboutContainer: {
-    backgroundColor: "#f5f5f5",
     borderRadius: 12,
     padding: 16,
   },
@@ -97,7 +109,6 @@ const styles = StyleSheet.create({
   },
   aboutText: {
     fontSize: 16,
-    color: "#666",
     lineHeight: 24,
   },
 });

@@ -107,7 +107,7 @@ export default function SettingsScreen() {
             label={t("settings.darkMode")}
             onPress={toggleTheme}
             showArrow={false}
-            value={isDark ? "On" : "Off"}
+            value={isDark ? t("common.on") : t("common.off")}
           />
           <SettingItem
             icon="bell"

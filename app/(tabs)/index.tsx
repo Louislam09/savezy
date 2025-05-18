@@ -13,9 +13,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useDatabase } from "../../lib/DatabaseContext";
-import { useTheme } from "../../lib/ThemeContext";
 import { ContentItem } from "../../lib/database";
+import { useDatabase } from "../../lib/DatabaseContext";
+import { useLanguage } from "../../lib/LanguageContext";
+import { useTheme } from "../../lib/ThemeContext";
 
 type ExtendedContentItem = ContentItem & {
   date?: string;
@@ -62,18 +63,23 @@ const contentTypes: ContentTypeConfig[] = [
 ];
 
 const EmptyState = ({ onAddNew }: { onAddNew: () => void }) => {
+  const { colors } = useTheme();
+  const { t } = useLanguage();
+
   return (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
         <Feather name="inbox" size={64} color="#E5E5EA" />
       </View>
-      <Text style={styles.emptyTitle}>No items saved yet</Text>
-      <Text style={styles.emptyDescription}>
-        Start saving interesting content you find online
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>
+        {t("home.emptyTitle")}
+      </Text>
+      <Text style={[styles.emptyDescription, { color: colors.textSecondary }]}>
+        {t("home.emptyDescription")}
       </Text>
       <TouchableOpacity style={styles.emptyButton} onPress={onAddNew}>
         <Feather name="plus-circle" size={20} color="#fff" />
-        <Text style={styles.emptyButtonText}>Save New Item</Text>
+        <Text style={styles.emptyButtonText}>{t("home.addNewButton")}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -83,6 +89,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { items, loading, deleteItem } = useDatabase();
   const { colors, isDark, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string | null>(null);
@@ -249,7 +256,9 @@ export default function HomeScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
         <View style={styles.headerTop}>
-          <Text style={[styles.title, { color: colors.text }]}>Savezy</Text>
+          <Text style={[styles.title, { color: colors.text }]}>
+            {t("home.title")}
+          </Text>
           <TouchableOpacity
             style={[
               styles.themeButton,
@@ -273,7 +282,7 @@ export default function HomeScreen() {
           <Feather name="search" size={20} color={colors.textSecondary} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search saved items..."
+            placeholder={t("common.search")}
             placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -298,7 +307,7 @@ export default function HomeScreen() {
                 !selectedType && { color: colors.text },
               ]}
             >
-              All
+              {t("common.all")}
             </Text>
           </TouchableOpacity>
           {contentTypes.map((type) => (
@@ -318,7 +327,7 @@ export default function HomeScreen() {
                   selectedType === type.id && { color: colors.text },
                 ]}
               >
-                {type.label}
+                {t(("contentTypes." + type.id.toLowerCase()) as any)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -332,7 +341,7 @@ export default function HomeScreen() {
             { backgroundColor: colors.background },
           ]}
         >
-          <Text style={{ color: colors.text }}>Loading...</Text>
+          <Text style={{ color: colors.text }}>{t("common.loading")}</Text>
         </View>
       ) : filteredItems.length === 0 ? (
         <EmptyState onAddNew={handleAddNew} />
@@ -357,7 +366,7 @@ export default function HomeScreen() {
         <BlurView intensity={90} style={styles.modal}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
-              What would you like to save?
+              {t("common.addNewItem")}
             </Text>
             {contentTypes.map((type) => (
               <TouchableOpacity
@@ -370,7 +379,7 @@ export default function HomeScreen() {
               >
                 <Feather name={type.icon} size={24} color={colors.accent} />
                 <Text style={[styles.typeButtonText, { color: colors.text }]}>
-                  {type.label}
+                  {t(("contentTypes." + type.id.toLowerCase()) as any)}
                 </Text>
                 <Feather
                   name="chevron-right"
@@ -387,7 +396,7 @@ export default function HomeScreen() {
               onPress={() => setShowTypeSelector(false)}
             >
               <Text style={[styles.cancelButtonText, { color: colors.accent }]}>
-                Cancel
+                {t("actions.cancel")}
               </Text>
             </TouchableOpacity>
           </View>
