@@ -63,6 +63,69 @@ const contentTypes: ContentTypeConfig[] = [
   },
 ];
 
+// Add sample data
+const DEMO_ITEMS: ExtendedContentItem[] = [
+  {
+    id: 1,
+    type: ContentType.VIDEO,
+    title: "How to Master React Native in 2024",
+    description:
+      "A comprehensive guide to building modern mobile apps with React Native, covering the latest features and best practices.",
+    url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    tags: ["programming", "react-native", "tutorial"],
+    date: "Mar 15, 2024",
+  },
+  {
+    id: 2,
+    type: ContentType.MEME,
+    title: "When the code works on first try",
+    description:
+      "That rare moment when your code runs perfectly without any bugs",
+    imageUrl: "https://picsum.photos/800/600",
+    tags: ["programming", "funny", "coding"],
+    date: "Mar 14, 2024",
+  },
+  {
+    id: 3,
+    type: ContentType.NEWS,
+    title: "Apple Announces New AI Features for iOS 18",
+    description:
+      "Apple reveals groundbreaking AI capabilities coming to iOS 18, including enhanced Siri and new privacy-focused features.",
+    url: "https://www.apple.com/newsroom/",
+    tags: ["tech", "apple", "ai"],
+    date: "Mar 13, 2024",
+  },
+  {
+    id: 4,
+    type: ContentType.WEBSITE,
+    title: "React Native Documentation",
+    description:
+      "Official React Native documentation with guides, tutorials, and API references.",
+    url: "https://reactnative.dev",
+    tags: ["react-native", "documentation", "development"],
+    date: "Mar 12, 2024",
+  },
+  {
+    id: 5,
+    type: ContentType.IMAGE,
+    title: "Beautiful Mountain Landscape",
+    description: "Stunning view of the Swiss Alps during sunset",
+    imageUrl: "https://picsum.photos/800/600",
+    tags: ["nature", "photography", "mountains"],
+    date: "Mar 11, 2024",
+  },
+  {
+    id: 6,
+    type: ContentType.VIDEO,
+    title: "Building a Mobile App with Expo",
+    description:
+      "Learn how to create a full-featured mobile app using Expo and React Native",
+    url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    tags: ["expo", "mobile", "tutorial"],
+    date: "Mar 10, 2024",
+  },
+];
+
 const EmptyState = ({ onAddNew }: { onAddNew: () => void }) => {
   const { colors } = useTheme();
   const { t } = useLanguage();
@@ -78,7 +141,10 @@ const EmptyState = ({ onAddNew }: { onAddNew: () => void }) => {
       <Text style={[styles.emptyDescription, { color: colors.textSecondary }]}>
         {t("home.emptyDescription")}
       </Text>
-      <TouchableOpacity style={styles.emptyButton} onPress={onAddNew}>
+      <TouchableOpacity
+        style={[styles.emptyButton, { backgroundColor: colors.accent }]}
+        onPress={onAddNew}
+      >
         <Feather name="plus-circle" size={20} color="#fff" />
         <Text style={styles.emptyButtonText}>{t("home.addNewButton")}</Text>
       </TouchableOpacity>
@@ -88,7 +154,7 @@ const EmptyState = ({ onAddNew }: { onAddNew: () => void }) => {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { items, loading, deleteItem } = useDatabase();
+  const { items: dbItems, loading, deleteItem } = useDatabase();
   const { colors, isDark, toggleTheme } = useTheme();
   const { t } = useLanguage();
   const [showTypeSelector, setShowTypeSelector] = useState(false);
@@ -96,9 +162,13 @@ export default function HomeScreen() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const [isGridView, setIsGridView] = useState(true);
+  const [isDemoMode] = useState(false); // Set to true for demo mode
   const windowWidth = Dimensions.get("window").width;
   const numColumns = isGridView ? 2 : 1;
   const cardWidth = isGridView ? (windowWidth - 48) / 2 : windowWidth - 40;
+
+  // Use demo items when in demo mode
+  const items = isDemoMode ? DEMO_ITEMS : dbItems;
 
   // Generate preview URLs in useEffect
   useEffect(() => {
@@ -157,7 +227,7 @@ export default function HomeScreen() {
     const renderTags = () => {
       if (!item.tags || item.tags.length === 0) return null;
       return (
-        <View style={styles.tagsRow}>
+        <View style={styles.tagsContainer}>
           {item.tags.map((tag, index) => (
             <View
               key={index}
@@ -181,9 +251,17 @@ export default function HomeScreen() {
 
     const renderDate = () => {
       return (
-        <Text style={[styles.dateText, { color: colors.textSecondary }]}>
-          {item.date || "Apr 30, 2025"}
-        </Text>
+        <View style={styles.dateContainer}>
+          <Feather
+            name="calendar"
+            size={14}
+            color={colors.textSecondary}
+            style={styles.dateIcon}
+          />
+          <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+            {item.date || "Apr 30, 2025"}
+          </Text>
+        </View>
       );
     };
 
@@ -264,8 +342,8 @@ export default function HomeScreen() {
           )}
 
           <View style={styles.itemFooter}>
-            {renderTags()}
             {renderDate()}
+            {renderTags()}
           </View>
         </View>
       </TouchableOpacity>
@@ -581,28 +659,34 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   itemFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  tagsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    marginTop: 12,
     gap: 8,
   },
+  dateContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  dateIcon: {
+    marginRight: 4,
+  },
+  dateText: {
+    fontSize: 13,
+    opacity: 0.8,
+  },
+  tagsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 4,
+  },
   tagChip: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
   tagText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "500",
-  },
-  dateText: {
-    fontSize: 14,
-    opacity: 0.8,
   },
   modal: {
     position: "absolute",
@@ -679,11 +763,10 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   emptyButton: {
-    backgroundColor: "#0A84FF",
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    borderRadius: 12,
+    padding: 10,
+    borderRadius: 8,
     gap: 8,
   },
   emptyButtonText: {
