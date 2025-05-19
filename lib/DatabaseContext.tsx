@@ -9,6 +9,10 @@ interface DatabaseContextType {
   refreshItems: () => Promise<void>;
   saveItem: (content: ContentItem) => Promise<ContentItem>;
   deleteItem: (id: number) => Promise<void>;
+  updateItem: (
+    id: number,
+    content: Partial<ContentItem>
+  ) => Promise<ContentItem>;
 }
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(
@@ -84,6 +88,49 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateItem = async (
+    id: number,
+    content: Partial<ContentItem>
+  ): Promise<ContentItem> => {
+    try {
+      const currentItem = items.find((item) => item.id === id);
+      if (!currentItem) {
+        throw new Error("Item not found");
+      }
+
+      const updatedItem = { ...currentItem, ...content };
+      await db.runAsync(
+        `UPDATE contents 
+         SET type = ?, url = ?, title = ?, imageUrl = ?, description = ?, 
+             summary = ?, comment = ?, category = ?, tags = ?
+         WHERE id = ?`,
+        [
+          updatedItem.type,
+          updatedItem.url || null,
+          updatedItem.title || null,
+          updatedItem.imageUrl || null,
+          updatedItem.description || null,
+          updatedItem.summary || null,
+          updatedItem.comment || null,
+          updatedItem.category || null,
+          updatedItem.tags ? JSON.stringify(updatedItem.tags) : null,
+          id,
+        ]
+      );
+
+      setItems((prev) =>
+        prev.map((item) => (item.id === id ? updatedItem : item))
+      );
+      setError(null);
+      return updatedItem;
+    } catch (err) {
+      const error =
+        err instanceof Error ? err : new Error("Failed to update item");
+      setError(error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     refreshItems();
   }, []);
@@ -95,6 +142,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     refreshItems,
     saveItem,
     deleteItem,
+    updateItem,
   };
 
   return (

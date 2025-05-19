@@ -185,6 +185,7 @@ export default function HomeScreen() {
     return (
       <TouchableOpacity
         style={[styles.itemCard, { backgroundColor: colors.card }]}
+        onPress={() => router.push(`/item/${item.id}`)}
       >
         <View
           style={[

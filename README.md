@@ -1,50 +1,68 @@
-# Welcome to your Expo app 👋
+# Savezy
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Savezy helps you save and organize interesting content you find online. Save videos, memes, news articles, websites, and images all in one place.
 
-## Get started
+## Features
 
-1. Install dependencies
+- Save and categorize different types of content: **Videos, Memes, News, Websites, Images**
+- Add titles, descriptions, and tags to your saved items
+- Search and filter your saved content
+- View content previews and organize by type
+- Multi-language support (English, Spanish)
+- Light and dark theme support
+- Customizable main accent color
+- Statistics and insights on your saved content
+
+## Getting Started
+
+1. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. **Start the app**
 
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+   In the output, you'll find options to open the app in a:
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+   - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
+   - [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
+   - [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
+   - [Expo Go](https://expo.dev/go)
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction/).
 
-## Get a fresh project
+## Usage
 
-When you're ready, run:
+- Tap the **+** button to add a new item. Choose the type (Video, Meme, News, Website, Image).
+- Fill in the details (title, description, tags, etc.) and save.
+- Browse, search, and filter your saved content from the home screen.
+- View statistics and insights in the Profile tab.
 
-```bash
-npm run reset-project
-```
+## Theming & Customization
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- Switch between light and dark mode in the Settings tab.
+- Change the main accent color (Pink, Blue, Yellow, Purple) in Settings.
+- Change the app language (English, Spanish) in Settings.
+
+## Scripts
+
+- `npm start` - Start the Expo development server
+- `npm run reset-project` - Reset to a fresh project state
+- `npm run android` - Run on Android emulator/device
+- `npm run ios` - Run on iOS simulator/device
+- `npm run web` - Run on web
+- `npm run lint` - Lint the project
 
 ## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
 
 - [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
 - [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
-## Join the community
+---
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Savezy © 2024

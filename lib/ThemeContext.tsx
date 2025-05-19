@@ -9,32 +9,35 @@ export type ThemeColors = {
   accent: string;
   buttonBackground: string;
   searchBackground: string;
+  error: string;
   mainColor: string;
 };
 
 const defaultMainColor = "#60A5FA";
 
 export const lightTheme: ThemeColors = {
-  background: "#F9FAFB",
+  background: "#FFFFFF",
   card: "#FFFFFF",
   cardBorder: "#E5E5EA",
   text: "#000000",
-  textSecondary: "#6C6C70",
-  accent: "#A78BFA",
-  buttonBackground: "#FFFFFF",
-  searchBackground: "#FFFFFF",
+  textSecondary: "#8E8E93",
+  accent: "#0A84FF",
+  buttonBackground: "#F2F2F7",
+  searchBackground: "#F2F2F7",
+  error: "#FF3B30",
   mainColor: defaultMainColor,
 };
 
 export const darkTheme: ThemeColors = {
   background: "#000000",
   card: "#1C1C1E",
-  cardBorder: "#2C2C2E",
+  cardBorder: "#38383A",
   text: "#FFFFFF",
   textSecondary: "#8E8E93",
-  accent: "#A78BFA",
-  buttonBackground: "#1C1C1E",
+  accent: "#0A84FF",
+  buttonBackground: "#2C2C2E",
   searchBackground: "#1C1C1E",
+  error: "#FF453A",
   mainColor: defaultMainColor,
 };
 
