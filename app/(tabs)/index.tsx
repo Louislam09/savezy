@@ -5,6 +5,7 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  Dimensions,
   FlatList,
   ScrollView,
   StyleSheet,
@@ -94,6 +95,10 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [previews, setPreviews] = useState<Record<string, string>>({});
+  const [isGridView, setIsGridView] = useState(true);
+  const windowWidth = Dimensions.get("window").width;
+  const numColumns = isGridView ? 2 : 1;
+  const cardWidth = isGridView ? (windowWidth - 48) / 2 : windowWidth - 40;
 
   // Generate preview URLs in useEffect
   useEffect(() => {
@@ -184,7 +189,14 @@ export default function HomeScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.itemCard, { backgroundColor: colors.card }]}
+        style={[
+          styles.itemCard,
+          {
+            backgroundColor: colors.card,
+            width: cardWidth,
+            marginHorizontal: isGridView ? 4 : 0,
+          },
+        ]}
         onPress={() => router.push(`/item/${item.id}`)}
       >
         <View
@@ -212,7 +224,7 @@ export default function HomeScreen() {
         {item.url ? (
           <Image
             source={getPreviewUrl(item) || undefined}
-            style={styles.itemImage}
+            style={[styles.itemImage, { height: isGridView ? 120 : 200 }]}
             contentFit="cover"
             placeholder={null}
             transition={200}
@@ -220,22 +232,29 @@ export default function HomeScreen() {
         ) : item.imageUrl ? (
           <Image
             source={item.imageUrl}
-            style={styles.itemImage}
+            style={[styles.itemImage, { height: isGridView ? 120 : 200 }]}
             contentFit="cover"
             placeholder={null}
             transition={200}
           />
         ) : null}
 
-        <View style={styles.itemContent}>
+        <View style={[styles.itemContent, { padding: isGridView ? 12 : 20 }]}>
           <Text
-            style={[styles.itemTitle, { color: colors.text }]}
+            style={[
+              styles.itemTitle,
+              {
+                color: colors.text,
+                fontSize: isGridView ? 16 : 20,
+                lineHeight: isGridView ? 22 : 28,
+              },
+            ]}
             numberOfLines={2}
           >
             {item.title || "Untitled"}
           </Text>
 
-          {item.description && (
+          {item.description && !isGridView && (
             <Text
               style={[styles.itemDescription, { color: colors.textSecondary }]}
               numberOfLines={2}
@@ -260,19 +279,34 @@ export default function HomeScreen() {
           <Text style={[styles.title, { color: colors.text }]}>
             {t("home.title")}
           </Text>
-          <TouchableOpacity
-            style={[
-              styles.themeButton,
-              { backgroundColor: colors.buttonBackground },
-            ]}
-            onPress={toggleTheme}
-          >
-            <Feather
-              name={isDark ? "sun" : "moon"}
-              size={20}
-              color={colors.text}
-            />
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity
+              style={[
+                styles.headerButton,
+                { backgroundColor: colors.buttonBackground },
+              ]}
+              onPress={() => setIsGridView(!isGridView)}
+            >
+              <Feather
+                name={isGridView ? "list" : "grid"}
+                size={20}
+                color={colors.text}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.headerButton,
+                { backgroundColor: colors.buttonBackground },
+              ]}
+              onPress={toggleTheme}
+            >
+              <Feather
+                name={isDark ? "sun" : "moon"}
+                size={20}
+                color={colors.text}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
         <View
           style={[
@@ -348,11 +382,17 @@ export default function HomeScreen() {
         <EmptyState onAddNew={handleAddNew} />
       ) : (
         <FlatList
+          key={isGridView + ""}
           data={filteredItems}
           renderItem={renderItem}
           keyExtractor={(item) => item.id!.toString()}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[
+            styles.list,
+            { paddingHorizontal: isGridView ? 16 : 20 },
+          ]}
           showsVerticalScrollIndicator={false}
+          numColumns={numColumns}
+          columnWrapperStyle={isGridView ? styles.gridRow : undefined}
         />
       )}
 
@@ -663,11 +703,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  themeButton: {
+  headerButtons: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  headerButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+  },
+  gridRow: {
+    justifyContent: "space-between",
   },
 });
