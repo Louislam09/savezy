@@ -4,7 +4,7 @@ import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Linking,
@@ -29,9 +29,10 @@ import WebsiteForm from "../forms/WebsiteForm";
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { items, deleteItem } = useDatabase();
+  const { items, deleteItem, saveItem } = useDatabase();
   const { colors } = useTheme();
   const { t } = useLanguage();
+  const deletedItemRef = useRef<ContentItem | null>(null);
 
   const [item, setItem] = useState<ContentItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -52,13 +53,64 @@ export default function ItemDetailScreen() {
     if (!item?.id) return;
 
     try {
+      setShowDeleteConfirm(false);
+
+      // Show loading state
+      Toast.show({
+        type: "info",
+        text1: t("common.loading"),
+        position: "bottom",
+        visibilityTime: 1000,
+      });
+
+      // Store the item before deleting
+      deletedItemRef.current = { ...item };
       await deleteItem(item.id);
+
+      Toast.show({
+        type: "info",
+        text1: t("common.itemDeleted"),
+        text2: t("common.undoButton"),
+        onPress: async () => {
+          if (deletedItemRef.current) {
+            try {
+              // Show loading state while restoring
+              Toast.show({
+                type: "info",
+                text1: t("common.loading"),
+                position: "bottom",
+                visibilityTime: 1000,
+              });
+
+              await saveItem(deletedItemRef.current);
+
+              Toast.show({
+                type: "success",
+                text1: t("common.itemRestored"),
+                position: "bottom",
+                visibilityTime: 2000,
+              });
+              router.back();
+            } catch (error) {
+              Toast.show({
+                type: "error",
+                text1: t("common.restoreError"),
+                position: "bottom",
+                visibilityTime: 2000,
+              });
+            }
+          }
+        },
+        position: "bottom",
+        visibilityTime: 3000,
+      });
+
       router.back();
     } catch (error) {
       Toast.show({
         type: "error",
-        text1: t("common.error" as any),
-        text2: t("common.deleteError" as any),
+        text1: t("common.error"),
+        text2: t("common.deleteError"),
         position: "bottom",
         visibilityTime: 1000,
       });

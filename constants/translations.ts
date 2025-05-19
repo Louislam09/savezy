@@ -77,6 +77,11 @@ export const translations = {
       openUrlError: "Failed to open URL",
       success: "Success",
       imageUrl: "Image URL",
+      itemDeleted: "Item deleted",
+      undoDelete: "Tap to undo",
+      undoButton: "Undo",
+      itemRestored: "Item restored",
+      restoreError: "Failed to restore item",
     },
     alerts: {
       deleteConfirm: "Are you sure you want to delete this item?",
@@ -174,6 +179,11 @@ export const translations = {
       openUrlError: "Error al abrir URL",
       success: "Éxito",
       imageUrl: "URL de la imagen",
+      itemDeleted: "Elemento eliminado",
+      undoDelete: "Toca para deshacer",
+      undoButton: "Deshacer",
+      itemRestored: "Elemento restaurado",
+      restoreError: "Error al restaurar el elemento",
     },
     alerts: {
       deleteConfirm: "¿Estás seguro de que quieres eliminar este elemento?",
