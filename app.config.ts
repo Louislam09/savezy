@@ -94,7 +94,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     owner: "louislam09",
     runtimeVersion: {
-      policy: "nativeVersion",
+      policy: "appVersion",
     },
   };
 };
