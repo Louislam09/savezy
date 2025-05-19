@@ -107,7 +107,7 @@ export default function VideoForm() {
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("contentTypes.video") + " URL *"}
+              {t("contentTypes.video") + " " + t("common.url") + " *"}
             </Text>
             <TextInput
               style={[
@@ -119,7 +119,7 @@ export default function VideoForm() {
               ]}
               value={url}
               onChangeText={setUrl}
-              placeholder={t("contentTypes.video") + " URL"}
+              placeholder={t("contentTypes.video") + " " + t("common.url")}
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
@@ -128,7 +128,7 @@ export default function VideoForm() {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("common.saveNew") + " (" + t("common.optional") + ")"}
+              {t("common.title") + " (" + t("common.optional") + ")"}
             </Text>
             <TextInput
               style={[
@@ -140,14 +140,14 @@ export default function VideoForm() {
               ]}
               value={title}
               onChangeText={setTitle}
-              placeholder={t("common.saveNew")}
+              placeholder={t("common.title")}
               placeholderTextColor={colors.textSecondary}
             />
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("common.saveNew") + " " + t("common.all")}
+              {t("common.description")}
             </Text>
             <TextInput
               style={[
@@ -160,7 +160,7 @@ export default function VideoForm() {
               ]}
               value={comment}
               onChangeText={setComment}
-              placeholder={t("common.saveNew")}
+              placeholder={t("common.description")}
               placeholderTextColor={colors.textSecondary}
               multiline
               numberOfLines={4}
@@ -170,7 +170,7 @@ export default function VideoForm() {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("common.all")}
+              {t("common.tags")}
             </Text>
             <View style={styles.tagInputContainer}>
               <TextInput
@@ -184,7 +184,7 @@ export default function VideoForm() {
                 ]}
                 value={currentTag}
                 onChangeText={setCurrentTag}
-                placeholder={t("common.all")}
+                placeholder={t("common.addTag")}
                 placeholderTextColor={colors.textSecondary}
                 onSubmitEditing={handleAddTag}
                 blurOnSubmit={false}

@@ -103,7 +103,7 @@ export default function WebsiteForm() {
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("common.saveNew") + " URL *"}
+              {t("common.url") + " *"}
             </Text>
             <TextInput
               style={[
@@ -115,7 +115,7 @@ export default function WebsiteForm() {
               ]}
               value={url}
               onChangeText={setUrl}
-              placeholder={t("common.saveNew") + " URL"}
+              placeholder={t("common.url")}
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
@@ -124,12 +124,7 @@ export default function WebsiteForm() {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("common.saveNew") +
-                " " +
-                t("common.all") +
-                " (" +
-                t("common.optional") +
-                ")"}
+              {t("common.title") + " (" + t("common.optional") + ")"}
             </Text>
             <TextInput
               style={[
@@ -141,14 +136,14 @@ export default function WebsiteForm() {
               ]}
               value={title}
               onChangeText={setTitle}
-              placeholder={t("common.saveNew") + " " + t("common.all")}
+              placeholder={t("common.title")}
               placeholderTextColor={colors.textSecondary}
             />
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("contentTypes.website") + " " + t("common.all")}
+              {t("common.category")}
             </Text>
             <ScrollView
               horizontal
@@ -175,7 +170,7 @@ export default function WebsiteForm() {
                       },
                     ]}
                   >
-                    {t("contentTypes.website") + ": " + cat}
+                    {cat}
                   </Text>
                 </TouchableOpacity>
               ))}

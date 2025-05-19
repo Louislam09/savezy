@@ -142,7 +142,7 @@ export default function ImageForm() {
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("common.saveNew")}
+              {t("common.title") + " (" + t("common.optional") + ")"}
             </Text>
             <TextInput
               style={[
@@ -154,14 +154,14 @@ export default function ImageForm() {
               ]}
               value={title}
               onChangeText={setTitle}
-              placeholder={t("common.saveNew")}
+              placeholder={t("common.title")}
               placeholderTextColor={colors.textSecondary}
             />
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("common.saveNew")}
+              {t("common.description")}
             </Text>
             <TextInput
               style={[
@@ -174,7 +174,7 @@ export default function ImageForm() {
               ]}
               value={description}
               onChangeText={setDescription}
-              placeholder={t("common.saveNew")}
+              placeholder={t("common.description")}
               placeholderTextColor={colors.textSecondary}
               multiline
               numberOfLines={4}
@@ -205,7 +205,7 @@ export default function ImageForm() {
                   { color: imageSource === "url" ? "#fff" : mainColor },
                 ]}
               >
-                {t("contentTypes.website")}
+                {t("common.url")}
               </Text>
             </TouchableOpacity>
 
@@ -234,7 +234,7 @@ export default function ImageForm() {
                   { color: imageSource === "upload" ? "#fff" : mainColor },
                 ]}
               >
-                {t("actions.add")}
+                {t("actions.upload")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -242,7 +242,7 @@ export default function ImageForm() {
           {imageSource === "url" ? (
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.text }]}>
-                {t("contentTypes.image") + " URL"}
+                {t("contentTypes.image") + " " + t("common.url") + " *"}
               </Text>
               <TextInput
                 style={[
@@ -254,14 +254,14 @@ export default function ImageForm() {
                 ]}
                 value={imageUrl}
                 onChangeText={setImageUrl}
-                placeholder={t("contentTypes.image") + " URL"}
+                placeholder={t("contentTypes.image") + " " + t("common.url")}
                 placeholderTextColor={colors.textSecondary}
               />
             </View>
           ) : (
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.text }]}>
-                {t("actions.add") + " " + t("contentTypes.image")}
+                {t("actions.upload") + " " + t("contentTypes.image")}
               </Text>
               <TouchableOpacity
                 style={[
@@ -274,7 +274,7 @@ export default function ImageForm() {
                 <Text style={[styles.uploadButtonText, { color: mainColor }]}>
                   {selectedImage
                     ? t("actions.edit") + " " + t("contentTypes.image")
-                    : t("actions.add") + " " + t("contentTypes.image")}
+                    : t("actions.upload") + " " + t("contentTypes.image")}
                 </Text>
               </TouchableOpacity>
               {selectedImage && (
@@ -285,7 +285,7 @@ export default function ImageForm() {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("common.all")}
+              {t("common.tags")}
             </Text>
             <View style={styles.tagInputContainer}>
               <TextInput
@@ -299,7 +299,7 @@ export default function ImageForm() {
                 ]}
                 value={currentTag}
                 onChangeText={setCurrentTag}
-                placeholder={t("common.all")}
+                placeholder={t("common.addTag")}
                 placeholderTextColor={colors.textSecondary}
                 onSubmitEditing={handleAddTag}
                 blurOnSubmit={false}

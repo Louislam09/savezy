@@ -37,6 +37,7 @@ export const translations = {
       edit: "Edit",
       share: "Share",
       add: "Add",
+      upload: "Upload",
     },
     common: {
       search: "Search saved items...",
@@ -63,6 +64,7 @@ export const translations = {
       confirmDelete: "Delete Item",
       deleteConfirmation:
         "Are you sure you want to delete this item? This action cannot be undone.",
+      category: "Category",
     },
     alerts: {
       deleteConfirm: "Are you sure you want to delete this item?",
@@ -119,6 +121,7 @@ export const translations = {
       edit: "Editar",
       share: "Compartir",
       add: "Agregar",
+      upload: "Subir",
     },
     common: {
       search: "Buscar elementos guardados...",
@@ -146,6 +149,7 @@ export const translations = {
       confirmDelete: "Eliminar Elemento",
       deleteConfirmation:
         "¿Estás seguro de que quieres eliminar este elemento? Esta acción no se puede deshacer.",
+      category: "Categoría",
     },
     alerts: {
       deleteConfirm: "¿Estás seguro de que quieres eliminar este elemento?",
@@ -161,7 +165,7 @@ export const translations = {
     },
     profile: {
       stats: "Estadísticas de Savezy",
-      totalItems: "Total de Elementos",
+      totalItems: "Total",
       aboutTitle: "Acerca de Savezy",
       aboutText:
         "Savezy te ayuda a guardar y organizar contenido interesante que encuentres en línea. Guarda videos, memes, noticias, sitios web e imágenes en un solo lugar.",

@@ -114,7 +114,7 @@ export default function NewsForm() {
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("common.saveNew") + " *"}
+              {t("common.title") + " *"}
             </Text>
             <TextInput
               style={[
@@ -126,14 +126,14 @@ export default function NewsForm() {
               ]}
               value={title}
               onChangeText={setTitle}
-              placeholder={t("common.saveNew")}
+              placeholder={t("common.title")}
               placeholderTextColor={colors.textSecondary}
             />
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("contentTypes.news") + " *"}
+              {t("contentTypes.news") + " " + t("common.url") + " *"}
             </Text>
             <TextInput
               style={[
@@ -145,7 +145,7 @@ export default function NewsForm() {
               ]}
               value={url}
               onChangeText={setUrl}
-              placeholder={t("contentTypes.news")}
+              placeholder={t("contentTypes.news") + " " + t("common.url")}
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
@@ -154,7 +154,7 @@ export default function NewsForm() {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("common.saveNew")}
+              {t("common.description")}
             </Text>
             <TextInput
               style={[
@@ -167,7 +167,7 @@ export default function NewsForm() {
               ]}
               value={summary}
               onChangeText={setSummary}
-              placeholder={t("common.saveNew")}
+              placeholder={t("common.description")}
               placeholderTextColor={colors.textSecondary}
               multiline
               numberOfLines={4}
@@ -177,7 +177,7 @@ export default function NewsForm() {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
-              {t("common.all")}
+              {t("common.tags")}
             </Text>
             <View style={styles.tagInputContainer}>
               <TextInput
@@ -191,7 +191,7 @@ export default function NewsForm() {
                 ]}
                 value={currentTag}
                 onChangeText={setCurrentTag}
-                placeholder={t("common.all")}
+                placeholder={t("common.addTag")}
                 placeholderTextColor={colors.textSecondary}
                 onSubmitEditing={handleAddTag}
                 blurOnSubmit={false}

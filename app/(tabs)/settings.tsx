@@ -1,7 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useCallback, useState } from "react";
 import {
-  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -70,33 +69,34 @@ const MAIN_COLOR_OPTIONS = [
   { name: "Purple", value: "#A78BFA" },
 ];
 
+const LANGUAGES = [
+  {
+    code: "en",
+    name: "English",
+    flag: "🇺🇸",
+  },
+  {
+    code: "es",
+    name: "Español",
+    flag: "🇪🇸",
+  },
+] as const;
+
 export default function SettingsScreen() {
   const { colors, isDark, toggleTheme, mainColor, setMainColor } = useTheme();
   const { language, setLanguage, t } = useLanguage();
 
   const [colorModalVisible, setColorModalVisible] = useState(false);
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
 
   const handleLanguageChange = useCallback(() => {
-    Alert.alert(
-      t("settings.selectLanguage"),
-      "",
-      [
-        {
-          text: t("languages.en"),
-          onPress: () => setLanguage("en"),
-        },
-        {
-          text: t("languages.es"),
-          onPress: () => setLanguage("es"),
-        },
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-      ],
-      { cancelable: true }
-    );
-  }, [setLanguage, t]);
+    setLanguageModalVisible(true);
+  }, []);
+
+  const handleSelectLanguage = (langCode: "en" | "es") => {
+    setLanguage(langCode);
+    setLanguageModalVisible(false);
+  };
 
   const handleMainColorChange = useCallback(() => {
     setColorModalVisible(true);
@@ -118,7 +118,7 @@ export default function SettingsScreen() {
           <SettingItem
             icon="globe"
             label={t("settings.language")}
-            value={t(`languages.${language}`)}
+            value={LANGUAGES.find((lang) => lang.code === language)?.name}
             onPress={handleLanguageChange}
           />
           <SettingItem
@@ -159,6 +159,89 @@ export default function SettingsScreen() {
           />
         </View>
       </ScrollView>
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={languageModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setLanguageModalVisible(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "rgba(0,0,0,0.4)",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: 16,
+              padding: 24,
+              alignItems: "center",
+              minWidth: 280,
+            }}
+          >
+            <Text
+              style={{
+                color: colors.text,
+                fontSize: 18,
+                fontWeight: "bold",
+                marginBottom: 16,
+              }}
+            >
+              {t("settings.selectLanguage")}
+            </Text>
+            <View style={{ width: "100%", gap: 12 }}>
+              {LANGUAGES.map((lang) => (
+                <TouchableOpacity
+                  key={lang.code}
+                  style={[
+                    styles.languageButton,
+                    {
+                      backgroundColor:
+                        language === lang.code
+                          ? mainColor
+                          : colors.searchBackground,
+                    },
+                  ]}
+                  onPress={() => handleSelectLanguage(lang.code)}
+                >
+                  <Text style={styles.languageFlag}>{lang.flag}</Text>
+                  <Text
+                    style={[
+                      styles.languageName,
+                      {
+                        color: language === lang.code ? "#fff" : colors.text,
+                      },
+                    ]}
+                  >
+                    {lang.name}
+                  </Text>
+                  {language === lang.code && (
+                    <Feather
+                      name="check"
+                      size={20}
+                      color="#fff"
+                      style={styles.languageCheck}
+                    />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={{ marginTop: 16 }}
+              onPress={() => setLanguageModalVisible(false)}
+            >
+              <Text style={{ color: colors.textSecondary, fontSize: 16 }}>
+                {t("actions.cancel")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Main Color Modal */}
       <Modal
@@ -269,5 +352,24 @@ const styles = StyleSheet.create({
   },
   settingValue: {
     fontSize: 17,
+  },
+  languageButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: "#f5f5f5",
+  },
+  languageFlag: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  languageName: {
+    fontSize: 16,
+    fontWeight: "600",
+    flex: 1,
+  },
+  languageCheck: {
+    marginLeft: 8,
   },
 });

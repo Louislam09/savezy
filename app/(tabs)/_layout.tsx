@@ -13,8 +13,8 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: colors.card,
-          borderTopColor: colors.cardBorder,
-          borderTopWidth: 1,
+          borderTopColor: colors.accent,
+          borderTopWidth: 0.2,
           elevation: 0,
           shadowOpacity: 0,
           height: 60,
