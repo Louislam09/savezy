@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { getColors, ImageColorsResult } from "react-native-image-colors";
 import ImageView from "react-native-image-viewing";
 import { Toast } from "toastify-react-native";
 import { useDatabase } from "../../lib/DatabaseContext";
@@ -28,6 +29,17 @@ import ImageForm from "../forms/ImageForm";
 import NewsForm from "../forms/NewsForm";
 import VideoForm from "../forms/VideoForm";
 import WebsiteForm from "../forms/WebsiteForm";
+
+type DynamicStyles = {
+  container: { backgroundColor: string };
+  header: { backgroundColor: string };
+  title: { color: string };
+  description: { color: string };
+  url: { color: string };
+  tag: { backgroundColor: string };
+  tagText: { color: string };
+  actionButton: { backgroundColor: string };
+};
 
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,6 +54,11 @@ export default function ItemDetailScreen() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isImageViewVisible, setIsImageViewVisible] = useState(false);
   const [imageViewIndex, setImageViewIndex] = useState(0);
+  const [imageColors, setImageColors] = useState<ImageColorsResult | null>(
+    null
+  );
+  const [isLoadingColors, setIsLoadingColors] = useState(true);
+  const imageUrlRef = useRef<string | null>(null);
 
   const imagePreview = `https://api.microlink.io/?url=${encodeURIComponent(
     (item?.url || "") as string
@@ -53,6 +70,32 @@ export default function ItemDetailScreen() {
       setItem(foundItem);
     }
   }, [id, items]);
+
+  useEffect(() => {
+    const loadImageColors = async () => {
+      if (!item?.imageUrl || item.imageUrl === imageUrlRef.current) return;
+
+      setIsLoadingColors(true);
+      imageUrlRef.current = item.imageUrl;
+
+      try {
+        const colors = await getColors(item.imageUrl, {
+          fallback: "#000000",
+          cache: true,
+          key: item.imageUrl,
+        });
+
+        setImageColors(colors);
+      } catch (error) {
+        console.error("Error loading image colors:", error);
+        setImageColors(null);
+      } finally {
+        setIsLoadingColors(false);
+      }
+    };
+
+    loadImageColors();
+  }, [item?.imageUrl]);
 
   const handleDelete = async () => {
     if (!item?.id) return;
@@ -246,6 +289,73 @@ export default function ItemDetailScreen() {
     }
   };
 
+  const getDynamicStyles = (): DynamicStyles | {} => {
+    if (!imageColors) return {};
+
+    let dominantColor: string;
+    let vibrantColor: string;
+    let darkVibrantColor: string;
+    let lightVibrantColor: string;
+
+    if (imageColors.platform === "android") {
+      dominantColor = imageColors.dominant;
+      vibrantColor = imageColors.vibrant;
+      darkVibrantColor = imageColors.darkVibrant;
+      lightVibrantColor = imageColors.lightVibrant;
+    } else if (imageColors.platform === "ios") {
+      dominantColor = imageColors.background;
+      vibrantColor = imageColors.primary;
+      darkVibrantColor = imageColors.detail;
+      lightVibrantColor = imageColors.secondary;
+    } else {
+      // Web platform or fallback
+      dominantColor = "#000000";
+      vibrantColor = "#000000";
+      darkVibrantColor = "#000000";
+      lightVibrantColor = "#000000";
+    }
+
+    // Calculate if the dominant color is dark or light
+    const r = parseInt(dominantColor.slice(1, 3), 16);
+    const g = parseInt(dominantColor.slice(3, 5), 16);
+    const b = parseInt(dominantColor.slice(5, 7), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    const isDark = brightness < 128;
+
+    return {
+      container: {
+        backgroundColor: isDark ? darkVibrantColor : lightVibrantColor,
+      },
+      header: {
+        backgroundColor: isDark ? darkVibrantColor : lightVibrantColor,
+      },
+      title: {
+        color: isDark ? "#ffffff" : "#000000",
+      },
+      description: {
+        color: isDark ? "rgba(255, 255, 255, 0.8)" : "rgba(0, 0, 0, 0.8)",
+      },
+      url: {
+        color: vibrantColor,
+      },
+      tag: {
+        backgroundColor: isDark
+          ? "rgba(255, 255, 255, 0.1)"
+          : "rgba(0, 0, 0, 0.1)",
+      },
+      tagText: {
+        color: isDark ? "#ffffff" : "#000000",
+      },
+      actionButton: {
+        backgroundColor: isDark
+          ? "rgba(255, 255, 255, 0.1)"
+          : "rgba(0, 0, 0, 0.1)",
+      },
+    };
+  };
+
+  const dynamicStyles = getDynamicStyles() as DynamicStyles;
+
   const renderContent = () => {
     if (isEditing) {
       return renderForm();
@@ -285,8 +395,8 @@ export default function ItemDetailScreen() {
               ) : null}
             </View>
 
-            <Text style={[styles.title, { color: colors.text }]}>
-              {item.title || t("common.untitled" as any)}
+            <Text style={[styles.title, dynamicStyles.title]}>
+              {item?.title || t("common.untitled" as any)}
             </Text>
 
             {item.url && (
@@ -295,7 +405,7 @@ export default function ItemDetailScreen() {
                   style={styles.urlButton}
                   onPress={handleOpenUrl}
                 >
-                  <Text style={[styles.url, { color: colors.accent }]}>
+                  <Text style={[styles.url, dynamicStyles.url]}>
                     {item.url}
                   </Text>
                 </TouchableOpacity>
@@ -304,9 +414,7 @@ export default function ItemDetailScreen() {
 
             {item.description && (
               <View style={styles.descriptionContainer}>
-                <Text
-                  style={[styles.description, { color: colors.textSecondary }]}
-                >
+                <Text style={[styles.description, dynamicStyles.description]}>
                   {item.description}
                 </Text>
                 <TouchableOpacity
@@ -315,7 +423,15 @@ export default function ItemDetailScreen() {
                     handleCopyToClipboard(item.description, "description")
                   }
                 >
-                  <Feather name="copy" size={16} color={colors.textSecondary} />
+                  <Feather
+                    name="copy"
+                    size={16}
+                    color={
+                      imageColors
+                        ? (dynamicStyles.description.color as string)
+                        : colors.textSecondary
+                    }
+                  />
                 </TouchableOpacity>
               </View>
             )}
@@ -323,11 +439,8 @@ export default function ItemDetailScreen() {
             {item.tags && item.tags.length > 0 && (
               <View style={styles.tagsList}>
                 {item.tags.map((tag) => (
-                  <View
-                    key={tag}
-                    style={[styles.tag, { backgroundColor: colors.card }]}
-                  >
-                    <Text style={[styles.tagText, { color: colors.text }]}>
+                  <View key={tag} style={[styles.tag, dynamicStyles.tag]}>
+                    <Text style={[styles.tagText, dynamicStyles.tagText]}>
                       #{tag}
                     </Text>
                   </View>
@@ -354,54 +467,98 @@ export default function ItemDetailScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[
+        styles.container,
+        dynamicStyles.container,
+        { backgroundColor: imageColors ? undefined : colors.background },
+      ]}
     >
       {!isEditing && (
-        <View style={styles.header}>
+        <View style={[styles.header, dynamicStyles.header]}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={[styles.backButton, dynamicStyles.actionButton]}
             onPress={() => router.back()}
           >
-            <Feather name="arrow-left" size={24} color={colors.text} />
+            <Feather
+              name="arrow-left"
+              size={24}
+              color={
+                imageColors
+                  ? (dynamicStyles.title.color as string)
+                  : colors.text
+              }
+            />
           </TouchableOpacity>
           <View style={styles.headerActions}>
             <TouchableOpacity
-              style={styles.actionButton}
+              style={[styles.actionButton, dynamicStyles.actionButton]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setIsEditing(true);
               }}
             >
-              <Feather name="edit" size={24} color={colors.text} />
+              <Feather
+                name="edit"
+                size={24}
+                color={
+                  imageColors
+                    ? (dynamicStyles.title.color as string)
+                    : colors.text
+                }
+              />
             </TouchableOpacity>
             {item?.url && (
               <TouchableOpacity
-                style={styles.actionButton}
+                style={[styles.actionButton, dynamicStyles.actionButton]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   handleCopyToClipboard(item.url, "url");
                 }}
               >
-                <Feather name="copy" size={24} color={colors.text} />
+                <Feather
+                  name="copy"
+                  size={24}
+                  color={
+                    imageColors
+                      ? (dynamicStyles.title.color as string)
+                      : colors.text
+                  }
+                />
               </TouchableOpacity>
             )}
             <TouchableOpacity
-              style={styles.actionButton}
+              style={[styles.actionButton, dynamicStyles.actionButton]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 handleShare();
               }}
             >
-              <Feather name="share-2" size={24} color={colors.text} />
+              <Feather
+                name="share-2"
+                size={24}
+                color={
+                  imageColors
+                    ? (dynamicStyles.title.color as string)
+                    : colors.text
+                }
+              />
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.actionButton}
+              style={[styles.actionButton, dynamicStyles.actionButton]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
                 setShowDeleteConfirm(true);
               }}
             >
-              <Feather name="trash-2" size={24} color={colors.text} />
+              <Feather
+                name="trash-2"
+                size={24}
+                color={
+                  imageColors
+                    ? (dynamicStyles.title.color as string)
+                    : colors.text
+                }
+              />
             </TouchableOpacity>
           </View>
         </View>

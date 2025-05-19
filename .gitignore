@@ -37,3 +37,23 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Android
+android/
+android-app/
+*.apk
+*.aab
+*.aar
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+.gradle/
+local.properties
+*.iml
+*.hprof
+.cxx/
+*.keystore
+!debug.keystore
