@@ -1,9 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import * as Clipboard from "expo-clipboard";
+import * as FileSystem from "expo-file-system";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Sharing from "expo-sharing";
 import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -16,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import ImageView from "react-native-image-viewing";
 import { Toast } from "toastify-react-native";
 import { useDatabase } from "../../lib/DatabaseContext";
 import { useLanguage } from "../../lib/LanguageContext";
@@ -37,6 +40,8 @@ export default function ItemDetailScreen() {
   const [item, setItem] = useState<ContentItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isImageViewVisible, setIsImageViewVisible] = useState(false);
+  const [imageViewIndex, setImageViewIndex] = useState(0);
 
   const imagePreview = `https://api.microlink.io/?url=${encodeURIComponent(
     (item?.url || "") as string
@@ -66,39 +71,16 @@ export default function ItemDetailScreen() {
       setTimeout(() => {
         Toast.show({
           type: "info",
-          text1: t("common.itemDeleted"),
-          text2: t("common.undoButton"),
-          onPress: async () => {
-            if (deletedItemRef.current) {
-              try {
-                // Show loading state while restoring
-                Toast.show({
-                  type: "info",
-                  text1: t("common.loading"),
-                  position: "bottom",
-                  visibilityTime: 1000,
-                });
-
-                await saveItem(deletedItemRef.current);
-
-                Toast.show({
-                  type: "success",
-                  text1: t("common.itemRestored"),
-                  position: "bottom",
-                  visibilityTime: 2000,
-                });
-              } catch (error) {
-                Toast.show({
-                  type: "error",
-                  text1: t("common.restoreError"),
-                  position: "bottom",
-                  visibilityTime: 2000,
-                });
-              }
-            }
-          },
+          text1: t("common.loading"),
           position: "bottom",
-          visibilityTime: 3000,
+          visibilityTime: 1000,
+        });
+
+        Toast.show({
+          type: "success",
+          text1: t("common.itemRestored"),
+          position: "bottom",
+          visibilityTime: 2000,
         });
       }, 100); // Small delay to ensure navigation is complete
     } catch (error) {
@@ -114,17 +96,60 @@ export default function ItemDetailScreen() {
 
   const handleShare = async () => {
     try {
-      const shareContent = {
-        title: item?.title || t("common.untitled" as any),
-        message: `${item?.title || t("common.untitled" as any)}\n\n${
-          item?.description || ""
-        }\n\n${item?.url || ""}`,
-        url: item?.url,
-      };
+      if (item?.type === ContentType.IMAGE && item?.imageUrl) {
+        // Check if sharing is available
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (!isAvailable) {
+          throw new Error("Sharing is not available on this device");
+        }
 
-      await Share.share(shareContent);
+        let imageUri = item.imageUrl;
+
+        // If it's a remote URL, download it first
+        if (item.imageUrl.startsWith("http")) {
+          const fileUri = FileSystem.documentDirectory + "temp_image.jpg";
+          const downloadResult = await FileSystem.downloadAsync(
+            item.imageUrl,
+            fileUri
+          );
+
+          if (downloadResult.status === 200) {
+            imageUri = downloadResult.uri;
+          } else {
+            throw new Error("Failed to download image");
+          }
+        }
+
+        // Share the image using expo-sharing
+        await Sharing.shareAsync(imageUri, {
+          mimeType: "image/jpeg",
+          dialogTitle: item?.title || t("common.untitled" as any),
+          UTI: "public.jpeg", // iOS only
+        });
+
+        // Clean up the temporary file if we downloaded it
+        if (item.imageUrl.startsWith("http")) {
+          try {
+            await FileSystem.deleteAsync(imageUri);
+          } catch (cleanupError) {
+            console.warn("Failed to cleanup temporary file:", cleanupError);
+          }
+        }
+      } else {
+        // For other types, share the URL and text
+        const shareContent = {
+          title: item?.title || t("common.untitled" as any),
+          message: `${item?.title || t("common.untitled" as any)}\n\n${
+            item?.description || ""
+          }\n\n${item?.url || ""}`,
+          url: item?.url,
+        };
+
+        await Share.share(shareContent);
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
+      console.error("Share error:", error);
       Toast.show({
         type: "error",
         text1: t("common.error" as any),
@@ -226,88 +251,103 @@ export default function ItemDetailScreen() {
       return renderForm();
     }
 
+    const images = item.imageUrl ? [item.imageUrl] : [];
+
     return (
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.content}>
-          <View style={styles.imageContainer}>
-            {item.imageUrl ? (
-              <Image
-                source={{ uri: item.imageUrl }}
-                style={styles.image}
-                contentFit="cover"
-                placeholder={null}
-                transition={200}
-              />
-            ) : item.url ? (
-              <Image
-                source={imagePreview || undefined}
-                style={[styles.image]}
-                contentFit="cover"
-                placeholder={null}
-                transition={200}
-              />
-            ) : item.imageUrl ? (
-              <Image
-                source={item.imageUrl}
-                style={[styles.image]}
-                contentFit="cover"
-                placeholder={null}
-                transition={200}
-              />
-            ) : null}
-          </View>
-
-          <Text style={[styles.title, { color: colors.text }]}>
-            {item.title || t("common.untitled" as any)}
-          </Text>
-
-          {item.url && (
-            <View style={styles.urlContainer}>
-              <TouchableOpacity
-                style={styles.urlButton}
-                onPress={handleOpenUrl}
-              >
-                <Text style={[styles.url, { color: colors.accent }]}>
-                  {item.url}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {item.description && (
-            <View style={styles.descriptionContainer}>
-              <Text
-                style={[styles.description, { color: colors.textSecondary }]}
-              >
-                {item.description}
-              </Text>
-              <TouchableOpacity
-                style={styles.copyButton}
-                onPress={() =>
-                  handleCopyToClipboard(item.description, "description")
-                }
-              >
-                <Feather name="copy" size={16} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {item.tags && item.tags.length > 0 && (
-            <View style={styles.tagsList}>
-              {item.tags.map((tag) => (
-                <View
-                  key={tag}
-                  style={[styles.tag, { backgroundColor: colors.card }]}
+      <>
+        <ScrollView style={styles.scrollView}>
+          <View style={styles.content}>
+            <View style={styles.imageContainer}>
+              {item.imageUrl ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setIsImageViewVisible(true);
+                    setImageViewIndex(0);
+                  }}
+                  activeOpacity={0.9}
                 >
-                  <Text style={[styles.tagText, { color: colors.text }]}>
-                    #{tag}
-                  </Text>
-                </View>
-              ))}
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    style={styles.image}
+                    contentFit="cover"
+                    placeholder={null}
+                    transition={200}
+                  />
+                </TouchableOpacity>
+              ) : item.url ? (
+                <Image
+                  source={imagePreview || undefined}
+                  style={[styles.image]}
+                  contentFit="cover"
+                  placeholder={null}
+                  transition={200}
+                />
+              ) : null}
             </View>
-          )}
-        </View>
-      </ScrollView>
+
+            <Text style={[styles.title, { color: colors.text }]}>
+              {item.title || t("common.untitled" as any)}
+            </Text>
+
+            {item.url && (
+              <View style={styles.urlContainer}>
+                <TouchableOpacity
+                  style={styles.urlButton}
+                  onPress={handleOpenUrl}
+                >
+                  <Text style={[styles.url, { color: colors.accent }]}>
+                    {item.url}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {item.description && (
+              <View style={styles.descriptionContainer}>
+                <Text
+                  style={[styles.description, { color: colors.textSecondary }]}
+                >
+                  {item.description}
+                </Text>
+                <TouchableOpacity
+                  style={styles.copyButton}
+                  onPress={() =>
+                    handleCopyToClipboard(item.description, "description")
+                  }
+                >
+                  <Feather name="copy" size={16} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {item.tags && item.tags.length > 0 && (
+              <View style={styles.tagsList}>
+                {item.tags.map((tag) => (
+                  <View
+                    key={tag}
+                    style={[styles.tag, { backgroundColor: colors.card }]}
+                  >
+                    <Text style={[styles.tagText, { color: colors.text }]}>
+                      #{tag}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </ScrollView>
+
+        <ImageView
+          images={images.map((url) => ({ uri: url }))}
+          imageIndex={imageViewIndex}
+          visible={isImageViewVisible}
+          onRequestClose={() => setIsImageViewVisible(false)}
+          swipeToCloseEnabled={true}
+          doubleTapToZoomEnabled={true}
+          animationType="fade"
+          backgroundColor="rgba(0, 0, 0, 0.9)"
+        />
+      </>
     );
   };
 
