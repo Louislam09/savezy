@@ -55,57 +55,52 @@ export default function ItemDetailScreen() {
     try {
       setShowDeleteConfirm(false);
 
-      // Show loading state
-      Toast.show({
-        type: "info",
-        text1: t("common.loading"),
-        position: "bottom",
-        visibilityTime: 1000,
-      });
-
       // Store the item before deleting
       deletedItemRef.current = { ...item };
       await deleteItem(item.id);
 
-      Toast.show({
-        type: "info",
-        text1: t("common.itemDeleted"),
-        text2: t("common.undoButton"),
-        onPress: async () => {
-          if (deletedItemRef.current) {
-            try {
-              // Show loading state while restoring
-              Toast.show({
-                type: "info",
-                text1: t("common.loading"),
-                position: "bottom",
-                visibilityTime: 1000,
-              });
-
-              await saveItem(deletedItemRef.current);
-
-              Toast.show({
-                type: "success",
-                text1: t("common.itemRestored"),
-                position: "bottom",
-                visibilityTime: 2000,
-              });
-              router.back();
-            } catch (error) {
-              Toast.show({
-                type: "error",
-                text1: t("common.restoreError"),
-                position: "bottom",
-                visibilityTime: 2000,
-              });
-            }
-          }
-        },
-        position: "bottom",
-        visibilityTime: 3000,
-      });
-
+      // Navigate back first
       router.back();
+
+      // Show undo toast after navigation
+      setTimeout(() => {
+        Toast.show({
+          type: "info",
+          text1: t("common.itemDeleted"),
+          text2: t("common.undoButton"),
+          onPress: async () => {
+            if (deletedItemRef.current) {
+              try {
+                // Show loading state while restoring
+                Toast.show({
+                  type: "info",
+                  text1: t("common.loading"),
+                  position: "bottom",
+                  visibilityTime: 1000,
+                });
+
+                await saveItem(deletedItemRef.current);
+
+                Toast.show({
+                  type: "success",
+                  text1: t("common.itemRestored"),
+                  position: "bottom",
+                  visibilityTime: 2000,
+                });
+              } catch (error) {
+                Toast.show({
+                  type: "error",
+                  text1: t("common.restoreError"),
+                  position: "bottom",
+                  visibilityTime: 2000,
+                });
+              }
+            }
+          },
+          position: "bottom",
+          visibilityTime: 3000,
+        });
+      }, 100); // Small delay to ensure navigation is complete
     } catch (error) {
       Toast.show({
         type: "error",
