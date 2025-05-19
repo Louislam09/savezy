@@ -1,12 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
+import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  Alert,
-  Clipboard,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -17,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Toast } from "toastify-react-native";
 import { useDatabase } from "../../lib/DatabaseContext";
 import { useLanguage } from "../../lib/LanguageContext";
 import { useTheme } from "../../lib/ThemeContext";
@@ -55,7 +55,13 @@ export default function ItemDetailScreen() {
       await deleteItem(item.id);
       router.back();
     } catch (error) {
-      Alert.alert(t("common.error" as any), t("common.deleteError" as any));
+      Toast.show({
+        type: "error",
+        text1: t("common.error" as any),
+        text2: t("common.deleteError" as any),
+        position: "bottom",
+        visibilityTime: 1000,
+      });
     }
   };
 
@@ -72,7 +78,13 @@ export default function ItemDetailScreen() {
       await Share.share(shareContent);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
-      Alert.alert(t("common.error" as any), t("common.shareError" as any));
+      Toast.show({
+        type: "error",
+        text1: t("common.error" as any),
+        text2: t("common.shareError" as any),
+        position: "bottom",
+        visibilityTime: 1000,
+      });
     }
   };
 
@@ -83,16 +95,26 @@ export default function ItemDetailScreen() {
     if (!text) return;
 
     try {
-      await Clipboard.setString(text);
+      await Clipboard.setStringAsync(text);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(
-        t("common.success" as any),
-        type === "url"
-          ? t("common.urlCopied" as any)
-          : t("common.descriptionCopied" as any)
-      );
+      Toast.show({
+        type: "success",
+        text1: t("common.success" as any),
+        text2:
+          type === "url"
+            ? t("common.urlCopied" as any)
+            : t("common.descriptionCopied" as any),
+        position: "bottom",
+        visibilityTime: 1500,
+      });
     } catch (error) {
-      Alert.alert(t("common.error" as any), t("common.copyError" as any));
+      Toast.show({
+        type: "error",
+        text1: t("common.error" as any),
+        text2: t("common.copyError" as any),
+        position: "bottom",
+        visibilityTime: 1000,
+      });
     }
   };
 
@@ -105,10 +127,22 @@ export default function ItemDetailScreen() {
         await Linking.openURL(item.url);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       } else {
-        Alert.alert(t("common.error" as any), t("common.invalidUrl" as any));
+        Toast.show({
+          type: "error",
+          text1: t("common.error" as any),
+          text2: t("common.invalidUrl" as any),
+          position: "top",
+          visibilityTime: 1000,
+        });
       }
     } catch (error) {
-      Alert.alert(t("common.error" as any), t("common.openUrlError" as any));
+      Toast.show({
+        type: "error",
+        text1: t("common.error" as any),
+        text2: t("common.openUrlError" as any),
+        position: "top",
+        visibilityTime: 1000,
+      });
     }
   };
 
