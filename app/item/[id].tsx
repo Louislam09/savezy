@@ -1,69 +1,52 @@
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Alert,
+  Clipboard,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useDatabase } from "../../lib/DatabaseContext";
 import { useLanguage } from "../../lib/LanguageContext";
 import { useTheme } from "../../lib/ThemeContext";
-import { ContentItem } from "../../lib/database";
+import { ContentItem, ContentType } from "../../lib/database";
+import ImageForm from "../forms/ImageForm";
+import NewsForm from "../forms/NewsForm";
+import VideoForm from "../forms/VideoForm";
+import WebsiteForm from "../forms/WebsiteForm";
 
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { items, saveItem, deleteItem, updateItem } = useDatabase();
+  const { items, deleteItem } = useDatabase();
   const { colors } = useTheme();
   const { t } = useLanguage();
 
   const [item, setItem] = useState<ContentItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [url, setUrl] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-  const [newTag, setNewTag] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const imagePreview = `https://api.microlink.io/?url=${encodeURIComponent(
+    (item?.url || "") as string
+  )}&screenshot=true&meta=false&embed=screenshot.url&waitForTimeout=500`;
 
   useEffect(() => {
     const foundItem = items.find((i) => i.id?.toString() === id);
     if (foundItem) {
       setItem(foundItem);
-      setTitle(foundItem.title || "");
-      setDescription(foundItem.description || "");
-      setUrl(foundItem.url || "");
-      setTags(foundItem.tags || []);
     }
   }, [id, items]);
-
-  const handleSave = async () => {
-    if (!item?.id) return;
-
-    try {
-      const updatedItem: ContentItem = {
-        ...item,
-        title,
-        description,
-        url,
-        tags,
-      };
-
-      await updateItem(item.id, updatedItem);
-      setIsEditing(false);
-    } catch (error) {
-      Alert.alert(t("common.error" as any), t("common.saveError" as any));
-    }
-  };
 
   const handleDelete = async () => {
     if (!item?.id) return;
@@ -76,15 +59,57 @@ export default function ItemDetailScreen() {
     }
   };
 
-  const addTag = () => {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      setTags([...tags, newTag.trim()]);
-      setNewTag("");
+  const handleShare = async () => {
+    try {
+      const shareContent = {
+        title: item?.title || t("common.untitled" as any),
+        message: `${item?.title || t("common.untitled" as any)}\n\n${
+          item?.description || ""
+        }\n\n${item?.url || ""}`,
+        url: item?.url,
+      };
+
+      await Share.share(shareContent);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      Alert.alert(t("common.error" as any), t("common.shareError" as any));
     }
   };
 
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove));
+  const handleCopyToClipboard = async (
+    text: string | undefined,
+    type: "url" | "description"
+  ) => {
+    if (!text) return;
+
+    try {
+      await Clipboard.setString(text);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        t("common.success" as any),
+        type === "url"
+          ? t("common.urlCopied" as any)
+          : t("common.descriptionCopied" as any)
+      );
+    } catch (error) {
+      Alert.alert(t("common.error" as any), t("common.copyError" as any));
+    }
+  };
+
+  const handleOpenUrl = async () => {
+    if (!item?.url) return;
+
+    try {
+      const supported = await Linking.canOpenURL(item.url);
+      if (supported) {
+        await Linking.openURL(item.url);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } else {
+        Alert.alert(t("common.error" as any), t("common.invalidUrl" as any));
+      }
+    } catch (error) {
+      Alert.alert(t("common.error" as any), t("common.openUrlError" as any));
+    }
   };
 
   if (!item) {
@@ -97,12 +122,120 @@ export default function ItemDetailScreen() {
     );
   }
 
+  const renderForm = () => {
+    if (!isEditing) return null;
+
+    switch (item.type) {
+      case ContentType.IMAGE:
+      case ContentType.MEME:
+        return <ImageForm item={item} onCancel={() => setIsEditing(false)} />;
+      case ContentType.WEBSITE:
+        return <WebsiteForm item={item} onCancel={() => setIsEditing(false)} />;
+      case ContentType.NEWS:
+        return <NewsForm item={item} onCancel={() => setIsEditing(false)} />;
+      case ContentType.VIDEO:
+        return <VideoForm item={item} onCancel={() => setIsEditing(false)} />;
+      default:
+        return null;
+    }
+  };
+
+  const renderContent = () => {
+    if (isEditing) {
+      return renderForm();
+    }
+
+    return (
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.content}>
+          <View style={styles.imageContainer}>
+            {item.imageUrl ? (
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={styles.image}
+                contentFit="cover"
+                placeholder={null}
+                transition={200}
+              />
+            ) : item.url ? (
+              <Image
+                source={imagePreview || undefined}
+                style={[styles.image]}
+                contentFit="cover"
+                placeholder={null}
+                transition={200}
+              />
+            ) : item.imageUrl ? (
+              <Image
+                source={item.imageUrl}
+                style={[styles.image]}
+                contentFit="cover"
+                placeholder={null}
+                transition={200}
+              />
+            ) : null}
+          </View>
+
+          <Text style={[styles.title, { color: colors.text }]}>
+            {item.title || t("common.untitled" as any)}
+          </Text>
+
+          {item.url && (
+            <View style={styles.urlContainer}>
+              <TouchableOpacity
+                style={styles.urlButton}
+                onPress={handleOpenUrl}
+              >
+                <Text style={[styles.url, { color: colors.accent }]}>
+                  {item.url}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {item.description && (
+            <View style={styles.descriptionContainer}>
+              <Text
+                style={[styles.description, { color: colors.textSecondary }]}
+              >
+                {item.description}
+              </Text>
+              <TouchableOpacity
+                style={styles.copyButton}
+                onPress={() =>
+                  handleCopyToClipboard(item.description, "description")
+                }
+              >
+                <Feather name="copy" size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {item.tags && item.tags.length > 0 && (
+            <View style={styles.tagsList}>
+              {item.tags.map((tag) => (
+                <View
+                  key={tag}
+                  style={[styles.tag, { backgroundColor: colors.card }]}
+                >
+                  <Text style={[styles.tagText, { color: colors.text }]}>
+                    #{tag}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    );
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <ScrollView style={styles.scrollView}>
+      {!isEditing && (
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
@@ -111,155 +244,49 @@ export default function ItemDetailScreen() {
             <Feather name="arrow-left" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerActions}>
-            {!isEditing ? (
-              <>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => setIsEditing(true)}
-                >
-                  <Feather name="edit" size={24} color={colors.text} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => setShowDeleteConfirm(true)}
-                >
-                  <Feather name="trash-2" size={24} color={colors.text} />
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => setIsEditing(false)}
-                >
-                  <Feather name="x" size={24} color={colors.text} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={handleSave}
-                >
-                  <Feather name="check" size={24} color={colors.text} />
-                </TouchableOpacity>
-              </>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setIsEditing(true);
+              }}
+            >
+              <Feather name="edit" size={24} color={colors.text} />
+            </TouchableOpacity>
+            {item?.url && (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  handleCopyToClipboard(item.url, "url");
+                }}
+              >
+                <Feather name="copy" size={24} color={colors.text} />
+              </TouchableOpacity>
             )}
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                handleShare();
+              }}
+            >
+              <Feather name="share-2" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                setShowDeleteConfirm(true);
+              }}
+            >
+              <Feather name="trash-2" size={24} color={colors.text} />
+            </TouchableOpacity>
           </View>
         </View>
+      )}
 
-        <View style={styles.content}>
-          {item.imageUrl && (
-            <Image
-              source={{ uri: item.imageUrl }}
-              style={styles.image}
-              contentFit="cover"
-              placeholder={null}
-              transition={200}
-            />
-          )}
-
-          {isEditing ? (
-            <>
-              <TextInput
-                style={[styles.titleInput, { color: colors.text }]}
-                value={title}
-                onChangeText={setTitle}
-                placeholder={t("common.title" as any)}
-                placeholderTextColor={colors.textSecondary}
-              />
-              <TextInput
-                style={[styles.urlInput, { color: colors.text }]}
-                value={url}
-                onChangeText={setUrl}
-                placeholder={t("common.url" as any)}
-                placeholderTextColor={colors.textSecondary}
-              />
-              <TextInput
-                style={[styles.descriptionInput, { color: colors.text }]}
-                value={description}
-                onChangeText={setDescription}
-                placeholder={t("common.description" as any)}
-                placeholderTextColor={colors.textSecondary}
-                multiline
-                numberOfLines={4}
-              />
-
-              <View style={styles.tagsContainer}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {t("common.tags" as any)}
-                </Text>
-                <View style={styles.tagInputContainer}>
-                  <TextInput
-                    style={[styles.tagInput, { color: colors.text }]}
-                    value={newTag}
-                    onChangeText={setNewTag}
-                    placeholder={t("common.addTag" as any)}
-                    placeholderTextColor={colors.textSecondary}
-                    onSubmitEditing={addTag}
-                  />
-                  <TouchableOpacity
-                    style={[
-                      styles.addTagButton,
-                      { backgroundColor: colors.accent },
-                    ]}
-                    onPress={addTag}
-                  >
-                    <Feather name="plus" size={20} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.tagsList}>
-                  {tags.map((tag) => (
-                    <TouchableOpacity
-                      key={tag}
-                      style={[styles.tag, { backgroundColor: colors.card }]}
-                      onPress={() => removeTag(tag)}
-                    >
-                      <Text style={[styles.tagText, { color: colors.text }]}>
-                        #{tag}
-                      </Text>
-                      <Feather
-                        name="x"
-                        size={16}
-                        color={colors.textSecondary}
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </>
-          ) : (
-            <>
-              <Text style={[styles.title, { color: colors.text }]}>
-                {item.title || t("common.untitled" as any)}
-              </Text>
-              {item.url && (
-                <Text style={[styles.url, { color: colors.accent }]}>
-                  {item.url}
-                </Text>
-              )}
-              {item.description && (
-                <Text
-                  style={[styles.description, { color: colors.textSecondary }]}
-                >
-                  {item.description}
-                </Text>
-              )}
-              {item.tags && item.tags.length > 0 && (
-                <View style={styles.tagsList}>
-                  {item.tags.map((tag) => (
-                    <View
-                      key={tag}
-                      style={[styles.tag, { backgroundColor: colors.card }]}
-                    >
-                      <Text style={[styles.tagText, { color: colors.text }]}>
-                        #{tag}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </>
-          )}
-        </View>
-      </ScrollView>
+      {renderContent()}
 
       {showDeleteConfirm && (
         <BlurView intensity={90} style={styles.modal}>
@@ -318,10 +345,11 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: "row",
-    gap: 16,
+    gap: 12,
   },
   actionButton: {
     padding: 8,
+    borderRadius: 8,
   },
   content: {
     padding: 16,
@@ -337,40 +365,15 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 8,
   },
-  titleInput: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 8,
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.05)",
-  },
   url: {
     fontSize: 16,
     marginBottom: 16,
     textDecorationLine: "underline",
   },
-  urlInput: {
-    fontSize: 16,
-    marginBottom: 16,
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.05)",
-  },
   description: {
     fontSize: 16,
     lineHeight: 24,
     marginBottom: 16,
-  },
-  descriptionInput: {
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 16,
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    minHeight: 100,
-    textAlignVertical: "top",
   },
   tagsContainer: {
     marginTop: 16,
@@ -467,5 +470,91 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     marginTop: 60,
+  },
+  urlContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    backgroundColor: "rgba(0,0,0,0.05)",
+    borderRadius: 8,
+    padding: 8,
+  },
+  urlButton: {
+    flex: 1,
+  },
+  descriptionContainer: {
+    position: "relative",
+    marginBottom: 16,
+    backgroundColor: "rgba(0,0,0,0.05)",
+    borderRadius: 8,
+    padding: 12,
+  },
+  copyButton: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    padding: 4,
+  },
+  imageContainer: {
+    position: "relative",
+    marginBottom: 16,
+  },
+  previewContainer: {
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "rgba(0,0,0,0.05)",
+    aspectRatio: 16 / 9,
+  },
+  previewImage: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "transparent",
+  },
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: 200,
+  },
+  loadingText: {
+    fontSize: 16,
+    textAlign: "center",
+  },
+  removeImageButton: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  imageInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    gap: 8,
+  },
+  imageUrlInput: {
+    flex: 1,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.05)",
+  },
+  clearImageButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

@@ -16,21 +16,31 @@ import {
 import { useDatabase } from "../../lib/DatabaseContext";
 import { useLanguage } from "../../lib/LanguageContext";
 import { useTheme } from "../../lib/ThemeContext";
+import { ContentItem, ContentType } from "../../lib/database";
 
 type ImageSource = "url" | "upload";
 
-export default function ImageForm() {
+interface ImageFormProps {
+  item?: ContentItem;
+  onCancel?: () => void;
+}
+
+export default function ImageForm({ item, onCancel }: ImageFormProps) {
   const router = useRouter();
-  const { saveItem } = useDatabase();
+  const { saveItem, updateItem } = useDatabase();
   const { t } = useLanguage();
   const { colors, mainColor } = useTheme();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [imageSource, setImageSource] = useState<ImageSource>("url");
+  const [title, setTitle] = useState(item?.title || "");
+  const [description, setDescription] = useState(item?.description || "");
+  const [imageUrl, setImageUrl] = useState(item?.imageUrl || "");
+  const [selectedImage, setSelectedImage] = useState<string | null>(
+    item?.imageUrl || null
+  );
+  const [imageSource, setImageSource] = useState<ImageSource>(
+    item?.imageUrl ? "url" : "url"
+  );
   const [currentTag, setCurrentTag] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>(item?.tags || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,17 +96,26 @@ export default function ImageForm() {
         return;
       }
 
-      // Create the content item
-      const content = {
-        type: "Image" as const,
+      // Create or update the content item
+      const content: ContentItem = {
+        type: item?.type || ContentType.IMAGE,
         title,
         description,
         imageUrl: imageSource === "url" ? imageUrl : selectedImage || "",
         tags,
       };
 
-      await saveItem(content);
-      router.back();
+      if (item?.id) {
+        await updateItem(item.id, content);
+      } else {
+        await saveItem(content);
+      }
+
+      if (onCancel) {
+        onCancel();
+      } else {
+        router.back();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save image");
     } finally {
@@ -111,11 +130,11 @@ export default function ImageForm() {
     >
       <ScrollView>
         <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={onCancel || (() => router.back())}>
             <Feather name="x" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {t("common.saveNewContent")}
+            {item ? t("common.editContent") : t("common.saveNewContent")}
           </Text>
           <TouchableOpacity
             onPress={handleSubmit}
@@ -129,7 +148,9 @@ export default function ImageForm() {
                 : [styles.submitButton, { backgroundColor: mainColor }]
             }
           >
-            <Text style={styles.submitButtonText}>{t("actions.save")}</Text>
+            <Text style={styles.submitButtonText}>
+              {item ? t("actions.update") : t("actions.save")}
+            </Text>
           </TouchableOpacity>
         </View>
 

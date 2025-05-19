@@ -14,17 +14,23 @@ import {
 import { useDatabase } from "../../lib/DatabaseContext";
 import { useLanguage } from "../../lib/LanguageContext";
 import { useTheme } from "../../lib/ThemeContext";
+import { ContentItem, ContentType } from "../../lib/database";
 
-export default function NewsForm() {
+interface NewsFormProps {
+  item?: ContentItem;
+  onCancel?: () => void;
+}
+
+export default function NewsForm({ item, onCancel }: NewsFormProps) {
   const router = useRouter();
-  const { saveItem } = useDatabase();
+  const { saveItem, updateItem } = useDatabase();
   const { t } = useLanguage();
   const { colors, mainColor } = useTheme();
-  const [title, setTitle] = useState("");
-  const [url, setUrl] = useState("");
-  const [summary, setSummary] = useState("");
+  const [title, setTitle] = useState(item?.title || "");
+  const [url, setUrl] = useState(item?.url || "");
+  const [summary, setSummary] = useState(item?.summary || "");
   const [currentTag, setCurrentTag] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>(item?.tags || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,17 +62,26 @@ export default function NewsForm() {
         return;
       }
 
-      // Create the content item
-      const content = {
-        type: "News" as const,
+      // Create or update the content item
+      const content: ContentItem = {
+        type: ContentType.NEWS,
         title,
         url,
         summary: summary || undefined,
         tags: tags.length > 0 ? tags : undefined,
       };
 
-      await saveItem(content);
-      router.back();
+      if (item?.id) {
+        await updateItem(item.id, content);
+      } else {
+        await saveItem(content);
+      }
+
+      if (onCancel) {
+        onCancel();
+      } else {
+        router.back();
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to save news article"
@@ -83,11 +98,11 @@ export default function NewsForm() {
     >
       <ScrollView>
         <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={onCancel || (() => router.back())}>
             <Feather name="x" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {t("common.saveNewContent")}
+            {item ? t("common.editContent") : t("common.saveNewContent")}
           </Text>
           <TouchableOpacity
             onPress={handleSubmit}
@@ -101,7 +116,9 @@ export default function NewsForm() {
                 : [styles.submitButton, { backgroundColor: mainColor }]
             }
           >
-            <Text style={styles.submitButtonText}>{t("actions.save")}</Text>
+            <Text style={styles.submitButtonText}>
+              {item ? t("actions.update") : t("actions.save")}
+            </Text>
           </TouchableOpacity>
         </View>
 

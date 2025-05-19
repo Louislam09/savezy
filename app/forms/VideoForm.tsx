@@ -14,17 +14,23 @@ import {
 import { useDatabase } from "../../lib/DatabaseContext";
 import { useLanguage } from "../../lib/LanguageContext";
 import { useTheme } from "../../lib/ThemeContext";
+import { ContentItem, ContentType } from "../../lib/database";
 
-export default function VideoForm() {
+interface VideoFormProps {
+  item?: ContentItem;
+  onCancel?: () => void;
+}
+
+export default function VideoForm({ item, onCancel }: VideoFormProps) {
   const router = useRouter();
-  const { saveItem } = useDatabase();
+  const { saveItem, updateItem } = useDatabase();
   const { t } = useLanguage();
   const { colors, mainColor } = useTheme();
-  const [url, setUrl] = useState("");
-  const [title, setTitle] = useState("");
-  const [comment, setComment] = useState("");
+  const [url, setUrl] = useState(item?.url || "");
+  const [title, setTitle] = useState(item?.title || "");
+  const [comment, setComment] = useState(item?.comment || "");
   const [currentTag, setCurrentTag] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>(item?.tags || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,17 +57,26 @@ export default function VideoForm() {
         return;
       }
 
-      // Create the content item
-      const content = {
-        type: "Video" as const,
+      // Create or update the content item
+      const content: ContentItem = {
+        type: ContentType.VIDEO,
         url,
         title: title || undefined,
         comment: comment || undefined,
         tags: tags.length > 0 ? tags : undefined,
       };
 
-      await saveItem(content);
-      router.back();
+      if (item?.id) {
+        await updateItem(item.id, content);
+      } else {
+        await saveItem(content);
+      }
+
+      if (onCancel) {
+        onCancel();
+      } else {
+        router.back();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save video");
     } finally {
@@ -76,11 +91,11 @@ export default function VideoForm() {
     >
       <ScrollView>
         <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={onCancel || (() => router.back())}>
             <Feather name="x" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {t("common.saveNewContent")}
+            {item ? t("common.editContent") : t("common.saveNewContent")}
           </Text>
           <TouchableOpacity
             onPress={handleSubmit}
@@ -94,7 +109,9 @@ export default function VideoForm() {
                 : [styles.submitButton, { backgroundColor: mainColor }]
             }
           >
-            <Text style={styles.submitButtonText}>{t("actions.save")}</Text>
+            <Text style={styles.submitButtonText}>
+              {item ? t("actions.update") : t("actions.save")}
+            </Text>
           </TouchableOpacity>
         </View>
 

@@ -14,6 +14,7 @@ import {
 import { useDatabase } from "../../lib/DatabaseContext";
 import { useLanguage } from "../../lib/LanguageContext";
 import { useTheme } from "../../lib/ThemeContext";
+import { ContentItem, ContentType } from "../../lib/database";
 
 const WEBSITE_CATEGORIES = [
   "Tool",
@@ -26,14 +27,21 @@ const WEBSITE_CATEGORIES = [
 
 type WebsiteCategory = (typeof WEBSITE_CATEGORIES)[number];
 
-export default function WebsiteForm() {
+interface WebsiteFormProps {
+  item?: ContentItem;
+  onCancel?: () => void;
+}
+
+export default function WebsiteForm({ item, onCancel }: WebsiteFormProps) {
   const router = useRouter();
-  const { saveItem } = useDatabase();
+  const { saveItem, updateItem } = useDatabase();
   const { t } = useLanguage();
   const { colors, mainColor } = useTheme();
-  const [url, setUrl] = useState("");
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<WebsiteCategory | "">("");
+  const [url, setUrl] = useState(item?.url || "");
+  const [title, setTitle] = useState(item?.title || "");
+  const [category, setCategory] = useState<WebsiteCategory | "">(
+    (item?.category as WebsiteCategory) || ""
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,16 +56,25 @@ export default function WebsiteForm() {
         return;
       }
 
-      // Create the content item
-      const content = {
-        type: "Website" as const,
+      // Create or update the content item
+      const content: ContentItem = {
+        type: ContentType.WEBSITE,
         url,
         title: title || undefined,
         category: category || undefined,
       };
 
-      await saveItem(content);
-      router.back();
+      if (item?.id) {
+        await updateItem(item.id, content);
+      } else {
+        await saveItem(content);
+      }
+
+      if (onCancel) {
+        onCancel();
+      } else {
+        router.back();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save website");
     } finally {
@@ -72,11 +89,11 @@ export default function WebsiteForm() {
     >
       <ScrollView>
         <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={onCancel || (() => router.back())}>
             <Feather name="x" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {t("common.saveNewContent")}
+            {item ? t("common.editContent") : t("common.saveNewContent")}
           </Text>
           <TouchableOpacity
             onPress={handleSubmit}
@@ -90,7 +107,9 @@ export default function WebsiteForm() {
                 : [styles.submitButton, { backgroundColor: mainColor }]
             }
           >
-            <Text style={styles.submitButtonText}>{t("actions.save")}</Text>
+            <Text style={styles.submitButtonText}>
+              {item ? t("actions.update") : t("actions.save")}
+            </Text>
           </TouchableOpacity>
         </View>
 

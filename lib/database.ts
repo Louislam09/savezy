@@ -1,8 +1,16 @@
 import { SQLiteDatabase } from "expo-sqlite";
 
+export enum ContentType {
+  VIDEO = "Video",
+  MEME = "Meme",
+  NEWS = "News",
+  WEBSITE = "Website",
+  IMAGE = "Image",
+}
+
 export type ContentItem = {
   id?: number;
-  type: "Video" | "Meme" | "News" | "Website" | "Image";
+  type: ContentType;
   url?: string;
   title?: string;
   imageUrl?: string;
