@@ -17,6 +17,7 @@ import {
 import { ContentItem } from "../../lib/database";
 import { useDatabase } from "../../lib/DatabaseContext";
 import { useLanguage } from "../../lib/LanguageContext";
+import { useStorage } from "../../lib/StorageContext";
 import { useTheme } from "../../lib/ThemeContext";
 
 type ExtendedContentItem = ContentItem & {
@@ -155,6 +156,7 @@ const EmptyState = ({ onAddNew }: { onAddNew: () => void }) => {
 export default function HomeScreen() {
   const router = useRouter();
   const { items: dbItems, loading, deleteItem } = useDatabase();
+  const { config } = useStorage();
   const { colors, isDark, toggleTheme } = useTheme();
   const { t } = useLanguage();
   const [showTypeSelector, setShowTypeSelector] = useState(false);

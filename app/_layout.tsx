@@ -1,4 +1,5 @@
-import { ThemeProvider, useTheme } from "@/lib/ThemeContext";
+import { StorageProvider, useStorage } from "@/lib/StorageContext";
+import { ThemeProvider } from "@/lib/ThemeContext";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
 import { useEffect } from "react";
@@ -100,7 +101,9 @@ const styles = StyleSheet.create({
 });
 
 function RootLayoutNav() {
-  const { hasCompletedOnboarding } = useTheme();
+  const {
+    config: { hasCompletedOnboarding },
+  } = useStorage();
   const segments = useSegments();
   const router = useRouter();
 
@@ -135,15 +138,17 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <SQLiteProvider databaseName="savezy.db" onInit={initDatabase}>
-          <DatabaseProvider>
-            <RootLayoutNav />
-            <ToastManager config={toastConfig} />
-          </DatabaseProvider>
-        </SQLiteProvider>
-      </LanguageProvider>
-    </ThemeProvider>
+    <StorageProvider>
+      <ThemeProvider>
+        <LanguageProvider>
+          <SQLiteProvider databaseName="savezy.db" onInit={initDatabase}>
+            <DatabaseProvider>
+              <RootLayoutNav />
+              <ToastManager config={toastConfig} />
+            </DatabaseProvider>
+          </SQLiteProvider>
+        </LanguageProvider>
+      </ThemeProvider>
+    </StorageProvider>
   );
 }

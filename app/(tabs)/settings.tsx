@@ -23,6 +23,7 @@ import Animated, {
   ZoomOut,
 } from "react-native-reanimated";
 import { useLanguage } from "../../lib/LanguageContext";
+import { useStorage } from "../../lib/StorageContext";
 import { useTheme } from "../../lib/ThemeContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -108,8 +109,9 @@ const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
 
 export default function SettingsScreen() {
-  const { colors, isDark, toggleTheme, mainColor, setMainColor } = useTheme();
-  const { language, setLanguage, t } = useLanguage();
+  const { colors, isDark, mainColor } = useTheme();
+  const { config, updateConfig } = useStorage();
+  const { t } = useLanguage();
 
   const [colorModalVisible, setColorModalVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
@@ -168,8 +170,8 @@ export default function SettingsScreen() {
   }, []);
 
   const handleSelectLanguage = (langCode: "en" | "es") => {
-    setLanguage(langCode);
-    // setLanguageModalVisible(false);
+    updateConfig({ language: langCode });
+    setLanguageModalVisible(false);
   };
 
   const handleMainColorChange = useCallback(() => {
@@ -181,11 +183,11 @@ export default function SettingsScreen() {
       withSpring(0.8, { damping: 10, stiffness: 100 }),
       withSpring(1, { damping: 10, stiffness: 100 })
     );
-    setMainColor(color);
+    updateConfig({ mainColor: color });
   };
 
   const handleToggleTheme = () => {
-    toggleTheme();
+    updateConfig({ theme: isDark ? "light" : "dark" });
   };
 
   const renderColorModal = () => (
@@ -289,7 +291,7 @@ export default function SettingsScreen() {
                     backgroundColor: colors.card,
                     borderColor: colors.cardBorder,
                   },
-                  language === lang.code && {
+                  config.language === lang.code && {
                     backgroundColor: mainColor + "20",
                     borderColor: mainColor,
                   },
@@ -301,12 +303,12 @@ export default function SettingsScreen() {
                   style={[
                     styles.languageName,
                     { color: colors.text },
-                    language === lang.code && { color: mainColor },
+                    config.language === lang.code && { color: mainColor },
                   ]}
                 >
                   {t(`languages.${lang.code}`)}
                 </Text>
-                {language === lang.code && (
+                {config.language === lang.code && (
                   <Ionicons
                     name="checkmark-circle"
                     size={24}
@@ -347,7 +349,9 @@ export default function SettingsScreen() {
           <SettingItem
             icon="globe"
             label={t("settings.language")}
-            value={LANGUAGES.find((lang) => lang.code === language)?.name}
+            value={
+              LANGUAGES.find((lang) => lang.code === config.language)?.name
+            }
             onPress={handleLanguageChange}
           />
           <AnimatedTouchableOpacity
@@ -378,17 +382,13 @@ export default function SettingsScreen() {
               </Text>
             </View>
           </AnimatedTouchableOpacity>
-          {/* <SettingItem
-            icon="bell"
-            label={t("settings.notifications")}
-            onPress={() => {}}
-          /> */}
           <SettingItem
             icon="droplet"
             label={t("settings.mainColor")}
             value={
-              MAIN_COLOR_OPTIONS.find((option) => option.value === mainColor)
-                ?.name || ""
+              MAIN_COLOR_OPTIONS.find(
+                (option) => option.value === config.mainColor
+              )?.name || ""
             }
             onPress={handleMainColorChange}
           />
