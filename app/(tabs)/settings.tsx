@@ -1,6 +1,8 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useCallback, useState } from "react";
 import {
+  Dimensions,
+  Linking,
   Modal,
   ScrollView,
   StyleSheet,
@@ -10,6 +12,34 @@ import {
 } from "react-native";
 import { useLanguage } from "../../lib/LanguageContext";
 import { useTheme } from "../../lib/ThemeContext";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+type ColorOption = {
+  value: string;
+  name: string;
+};
+
+const MAIN_COLOR_OPTIONS: ColorOption[] = [
+  { value: "#007AFF", name: "Blue" },
+  { value: "#FF2D55", name: "Pink" },
+  { value: "#5856D6", name: "Purple" },
+  { value: "#FF9500", name: "Orange" },
+  { value: "#34C759", name: "Green" },
+];
+
+const LANGUAGES = [
+  {
+    code: "en",
+    name: "English",
+    flag: "🇺🇸",
+  },
+  {
+    code: "es",
+    name: "Español",
+    flag: "🇪🇸",
+  },
+] as const;
 
 type SettingItemProps = {
   icon: keyof typeof Feather.glyphMap;
@@ -62,26 +92,6 @@ const SettingItem = ({
   );
 };
 
-const MAIN_COLOR_OPTIONS = [
-  { name: "Pink", value: "#F87171" },
-  { name: "Blue", value: "#60A5FA" },
-  { name: "Yellow", value: "#FBBF24" },
-  { name: "Purple", value: "#A78BFA" },
-];
-
-const LANGUAGES = [
-  {
-    code: "en",
-    name: "English",
-    flag: "🇺🇸",
-  },
-  {
-    code: "es",
-    name: "Español",
-    flag: "🇪🇸",
-  },
-] as const;
-
 export default function SettingsScreen() {
   const { colors, isDark, toggleTheme, mainColor, setMainColor } = useTheme();
   const { language, setLanguage, t } = useLanguage();
@@ -95,7 +105,7 @@ export default function SettingsScreen() {
 
   const handleSelectLanguage = (langCode: "en" | "es") => {
     setLanguage(langCode);
-    setLanguageModalVisible(false);
+    // setLanguageModalVisible(false);
   };
 
   const handleMainColorChange = useCallback(() => {
@@ -104,7 +114,135 @@ export default function SettingsScreen() {
 
   const handleSelectColor = (color: string) => {
     setMainColor(color);
-    setColorModalVisible(false);
+    // setColorModalVisible(false);
+  };
+
+  const renderColorModal = () => (
+    <Modal
+      visible={colorModalVisible}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setColorModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>
+            {t("settings.selectMainColor")}
+          </Text>
+          <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+            {t("settings.mainColorDescription")}
+          </Text>
+          <View style={styles.colorGrid}>
+            {MAIN_COLOR_OPTIONS.map((color) => (
+              <TouchableOpacity
+                key={color.value}
+                style={[
+                  styles.colorOption,
+                  { backgroundColor: color.value },
+                  mainColor === color.value && styles.selectedColor,
+                ]}
+                onPress={() => handleSelectColor(color.value)}
+              >
+                {mainColor === color.value && (
+                  <Ionicons name="checkmark" size={24} color="white" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={styles.colorNames}>
+            {MAIN_COLOR_OPTIONS.map((color) => (
+              <Text
+                key={color.value}
+                style={[
+                  styles.colorName,
+                  { color: colors.textSecondary },
+                  mainColor === color.value && { color: colors.text },
+                ]}
+              >
+                {color.name}
+              </Text>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[styles.modalButton, { backgroundColor: colors.cardBorder }]}
+            onPress={() => setColorModalVisible(false)}
+          >
+            <Text style={[styles.modalButtonText, { color: colors.text }]}>
+              {t("actions.cancel")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderLanguageModal = () => (
+    <Modal
+      visible={languageModalVisible}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setLanguageModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>
+            {t("settings.selectLanguage")}
+          </Text>
+          <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+            {t("settings.languageDescription")}
+          </Text>
+          <View style={styles.optionsContainer}>
+            {LANGUAGES.map((lang) => (
+              <TouchableOpacity
+                key={lang.code}
+                style={[
+                  styles.languageOption,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.cardBorder,
+                  },
+                  language === lang.code && {
+                    backgroundColor: mainColor + "20",
+                    borderColor: mainColor,
+                  },
+                ]}
+                onPress={() => handleSelectLanguage(lang.code)}
+              >
+                <Text style={styles.languageFlag}>{lang.flag}</Text>
+                <Text
+                  style={[
+                    styles.languageName,
+                    { color: colors.text },
+                    language === lang.code && { color: mainColor },
+                  ]}
+                >
+                  {t(`languages.${lang.code}`)}
+                </Text>
+                {language === lang.code && (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={24}
+                    color={mainColor}
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[styles.modalButton, { backgroundColor: colors.cardBorder }]}
+            onPress={() => setLanguageModalVisible(false)}
+          >
+            <Text style={[styles.modalButtonText, { color: colors.text }]}>
+              {t("actions.cancel")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const openAppInStore = async (appPackage: string) => {
+    await Linking.openURL(appPackage);
   };
 
   return (
@@ -128,11 +266,11 @@ export default function SettingsScreen() {
             showArrow={false}
             value={isDark ? t("common.on") : t("common.off")}
           />
-          <SettingItem
+          {/* <SettingItem
             icon="bell"
             label={t("settings.notifications")}
             onPress={() => {}}
-          />
+          /> */}
           <SettingItem
             icon="droplet"
             label={t("settings.mainColor")}
@@ -148,7 +286,9 @@ export default function SettingsScreen() {
           <SettingItem
             icon="info"
             label={t("settings.about")}
-            onPress={() => {}}
+            onPress={() =>
+              openAppInStore("market://search?q=pub:Luis_Martinez")
+            }
           />
           <SettingItem
             icon="tag"
@@ -160,151 +300,8 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
-      {/* Language Selection Modal */}
-      <Modal
-        visible={languageModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setLanguageModalVisible(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: "rgba(0,0,0,0.4)",
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: colors.card,
-              borderRadius: 16,
-              padding: 24,
-              alignItems: "center",
-              minWidth: 280,
-            }}
-          >
-            <Text
-              style={{
-                color: colors.text,
-                fontSize: 18,
-                fontWeight: "bold",
-                marginBottom: 16,
-              }}
-            >
-              {t("settings.selectLanguage")}
-            </Text>
-            <View style={{ width: "100%", gap: 12 }}>
-              {LANGUAGES.map((lang) => (
-                <TouchableOpacity
-                  key={lang.code}
-                  style={[
-                    styles.languageButton,
-                    {
-                      backgroundColor:
-                        language === lang.code
-                          ? mainColor
-                          : colors.searchBackground,
-                    },
-                  ]}
-                  onPress={() => handleSelectLanguage(lang.code)}
-                >
-                  <Text style={styles.languageFlag}>{lang.flag}</Text>
-                  <Text
-                    style={[
-                      styles.languageName,
-                      {
-                        color: language === lang.code ? "#fff" : colors.text,
-                      },
-                    ]}
-                  >
-                    {lang.name}
-                  </Text>
-                  {language === lang.code && (
-                    <Feather
-                      name="check"
-                      size={20}
-                      color="#fff"
-                      style={styles.languageCheck}
-                    />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity
-              style={{ marginTop: 16 }}
-              onPress={() => setLanguageModalVisible(false)}
-            >
-              <Text style={{ color: colors.textSecondary, fontSize: 16 }}>
-                {t("actions.cancel")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Main Color Modal */}
-      <Modal
-        visible={colorModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setColorModalVisible(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: "rgba(0,0,0,0.4)",
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: colors.card,
-              borderRadius: 16,
-              padding: 24,
-              alignItems: "center",
-              minWidth: 280,
-            }}
-          >
-            <Text
-              style={{
-                color: colors.text,
-                fontSize: 18,
-                fontWeight: "bold",
-                marginBottom: 16,
-              }}
-            >
-              {t("settings.selectMainColor")}
-            </Text>
-            <View style={{ flexDirection: "row", marginBottom: 24 }}>
-              {MAIN_COLOR_OPTIONS.map((option, idx) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: option.value,
-                    borderWidth: mainColor === option.value ? 3 : 1,
-                    borderColor:
-                      mainColor === option.value
-                        ? colors.text
-                        : colors.cardBorder,
-                    marginRight: idx !== MAIN_COLOR_OPTIONS.length - 1 ? 16 : 0,
-                  }}
-                  onPress={() => handleSelectColor(option.value)}
-                />
-              ))}
-            </View>
-            <TouchableOpacity onPress={() => setColorModalVisible(false)}>
-              <Text style={{ color: colors.textSecondary, fontSize: 16 }}>
-                {t("actions.cancel")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      {renderColorModal()}
+      {renderLanguageModal()}
     </View>
   );
 }
@@ -353,12 +350,76 @@ const styles = StyleSheet.create({
   settingValue: {
     fontSize: 17,
   },
-  languageButton: {
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  modalContent: {
+    width: "90%",
+    maxWidth: 400,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 24,
+    paddingHorizontal: 20,
+    lineHeight: 22,
+  },
+  colorGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 20,
+    marginBottom: 16,
+  },
+  colorOption: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  selectedColor: {
+    borderColor: "#000",
+    transform: [{ scale: 1.1 }],
+  },
+  colorNames: {
+    flexDirection: "row",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    gap: 20,
+    width: SCREEN_WIDTH - 80,
+    marginBottom: 24,
+  },
+  colorName: {
+    fontSize: 14,
+    width: 60,
+    textAlign: "center",
+  },
+  optionsContainer: {
+    width: "100%",
+    gap: 16,
+    marginBottom: 24,
+  },
+  languageOption: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
     borderRadius: 12,
-    backgroundColor: "#f5f5f5",
+    borderWidth: 1,
   },
   languageFlag: {
     fontSize: 24,
@@ -369,7 +430,15 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     flex: 1,
   },
-  languageCheck: {
-    marginLeft: 8,
+  modalButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    minWidth: 120,
+    alignItems: "center",
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
