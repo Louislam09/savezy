@@ -1,6 +1,7 @@
-import { ThemeProvider } from "@/lib/ThemeContext";
-import { Stack } from "expo-router";
+import { ThemeProvider, useTheme } from "@/lib/ThemeContext";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
+import { useEffect } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -98,27 +99,51 @@ const styles = StyleSheet.create({
   },
 });
 
+function RootLayoutNav() {
+  const { hasCompletedOnboarding } = useTheme();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    const inOnboardingGroup = segments[0] === "onboarding";
+    const inTabsGroup = segments[0] === "(tabs)";
+
+    if (!hasCompletedOnboarding && !inOnboardingGroup) {
+      // Redirect to onboarding if not completed
+      router.replace("/onboarding");
+    } else if (hasCompletedOnboarding && inOnboardingGroup) {
+      // Redirect to main app if onboarding is completed
+      router.replace("/(tabs)");
+    }
+  }, [hasCompletedOnboarding, segments]);
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="forms"
+        options={{
+          headerShown: false,
+          presentation: "modal",
+          animation: "slide_from_bottom",
+        }}
+      />
+    </Stack>
+  );
+}
+
 export default function RootLayout() {
   return (
-    <LanguageProvider>
-      <ThemeProvider>
+    <ThemeProvider>
+      <LanguageProvider>
         <SQLiteProvider databaseName="savezy.db" onInit={initDatabase}>
           <DatabaseProvider>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="forms"
-                options={{
-                  headerShown: false,
-                  presentation: "modal",
-                  animation: "slide_from_bottom",
-                }}
-              />
-            </Stack>
+            <RootLayoutNav />
             <ToastManager config={toastConfig} />
           </DatabaseProvider>
         </SQLiteProvider>
-      </ThemeProvider>
-    </LanguageProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }

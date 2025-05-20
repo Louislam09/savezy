@@ -1,45 +1,11 @@
-import React, { createContext, useContext, useState } from "react";
-
-export type ThemeColors = {
-  background: string;
-  card: string;
-  cardBorder: string;
-  text: string;
-  textSecondary: string;
-  accent: string;
-  buttonBackground: string;
-  searchBackground: string;
-  error: string;
-  mainColor: string;
-};
-
-const defaultMainColor = "#60A5FA";
-
-export const lightTheme: ThemeColors = {
-  background: "#FFFFFF",
-  card: "#FFFFFF",
-  cardBorder: "#E5E5EA",
-  text: "#000000",
-  textSecondary: "#8E8E93",
-  accent: "#0A84FF",
-  buttonBackground: "#F2F2F7",
-  searchBackground: "#F2F2F7",
-  error: "#FF3B30",
-  mainColor: defaultMainColor,
-};
-
-export const darkTheme: ThemeColors = {
-  background: "#000000",
-  card: "#1C1C1E",
-  cardBorder: "#38383A",
-  text: "#FFFFFF",
-  textSecondary: "#8E8E93",
-  accent: "#0A84FF",
-  buttonBackground: "#2C2C2E",
-  searchBackground: "#1C1C1E",
-  error: "#FF453A",
-  mainColor: defaultMainColor,
-};
+import {
+  darkTheme,
+  defaultMainColor,
+  lightTheme,
+  ThemeColors,
+} from "@/constants/theme";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 type ThemeContextType = {
   isDark: boolean;
@@ -47,6 +13,8 @@ type ThemeContextType = {
   colors: ThemeColors;
   mainColor: string;
   setMainColor: (color: string) => void;
+  hasCompletedOnboarding: boolean;
+  completeOnboarding: () => Promise<void>;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -54,9 +22,52 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState(true);
   const [mainColor, setMainColor] = useState(defaultMainColor);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
-  const toggleTheme = () => {
-    setIsDark((prev) => !prev);
+  useEffect(() => {
+    // Load saved preferences
+    const loadPreferences = async () => {
+      try {
+        const [savedTheme, savedColor, savedOnboarding] = await Promise.all([
+          AsyncStorage.getItem("theme"),
+          AsyncStorage.getItem("mainColor"),
+          AsyncStorage.getItem("hasCompletedOnboarding"),
+        ]);
+
+        if (savedTheme) {
+          setIsDark(savedTheme === "dark");
+        }
+        if (savedColor) {
+          setMainColor(savedColor);
+        }
+        if (savedOnboarding) {
+          setHasCompletedOnboarding(savedOnboarding === "true");
+        }
+      } catch (error) {
+        console.error("Error loading preferences:", error);
+      }
+    };
+
+    loadPreferences();
+  }, []);
+
+  const toggleTheme = async () => {
+    const newTheme = !isDark;
+    setIsDark(newTheme);
+    try {
+      await AsyncStorage.setItem("theme", newTheme ? "dark" : "light");
+    } catch (error) {
+      console.error("Error saving theme preference:", error);
+    }
+  };
+
+  const completeOnboarding = async () => {
+    try {
+      await AsyncStorage.setItem("hasCompletedOnboarding", "true");
+      setHasCompletedOnboarding(true);
+    } catch (error) {
+      console.error("Error saving onboarding status:", error);
+    }
   };
 
   const themeColors = {
@@ -71,6 +82,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     colors: themeColors,
     mainColor,
     setMainColor,
+    hasCompletedOnboarding,
+    completeOnboarding,
   };
 
   return (

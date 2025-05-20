@@ -1,7 +1,17 @@
-export type Language = "en" | "es";
+export type Language = "es" | "en";
 
 export const translations = {
   en: {
+    onboarding: {
+      welcome: "Welcome to Savezy",
+      welcomeDescription: "Let's set up your preferences to get started",
+      colorTitle: "Choose Your Theme Color",
+      languageTitle: "Select Language",
+      themeTitle: "Choose Theme Mode",
+      next: "Next",
+      getStarted: "Get Started",
+      back: "Back",
+    },
     settings: {
       title: "Settings",
       language: "Language",
@@ -13,6 +23,12 @@ export const translations = {
       selectLanguage: "Select Language",
       mainColor: "Main Color",
       selectMainColor: "Select Main Color",
+      mainColorDescription:
+        "Choose a color that will be used throughout the app",
+      languageDescription:
+        "Select your preferred language for the app interface",
+      themeDescription:
+        "Choose between light and dark mode, or follow system settings",
     },
     languages: {
       en: "English",
@@ -103,6 +119,16 @@ export const translations = {
     },
   },
   es: {
+    onboarding: {
+      welcome: "Bienvenido a Savezy",
+      welcomeDescription: "Configuremos tus preferencias para comenzar",
+      colorTitle: "Elige Tu Color de Tema",
+      languageTitle: "Selecciona el Idioma",
+      themeTitle: "Elige el Modo de Tema",
+      next: "Siguiente",
+      getStarted: "Comenzar",
+      back: "Atrás",
+    },
     settings: {
       title: "Configuración",
       language: "Idioma",
@@ -114,6 +140,11 @@ export const translations = {
       selectLanguage: "Seleccionar Idioma",
       mainColor: "Color Principal",
       selectMainColor: "Seleccionar Color Principal",
+      mainColorDescription: "Elige un color que se usará en toda la aplicación",
+      languageDescription:
+        "Selecciona tu idioma preferido para la interfaz de la aplicación",
+      themeDescription:
+        "Elige entre modo claro y oscuro, o sigue la configuración del sistema",
     },
     languages: {
       en: "Inglés",
