@@ -1,100 +1,110 @@
-import {
-  darkTheme,
-  defaultMainColor,
-  lightTheme,
-  ThemeColors,
-} from "@/constants/theme";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect } from "react";
+import { useColorScheme } from "react-native";
+import { useStorage } from "./StorageContext";
 
 type ThemeContextType = {
   isDark: boolean;
   toggleTheme: () => void;
-  colors: ThemeColors;
   mainColor: string;
   setMainColor: (color: string) => void;
-  hasCompletedOnboarding: boolean;
+  colors: ThemeColors;
   completeOnboarding: () => Promise<void>;
+};
+
+export type ThemeColors = {
+  background: string;
+  card: string;
+  cardBorder: string;
+  text: string;
+  textSecondary: string;
+  accent: string;
+  buttonBackground: string;
+  searchBackground: string;
+  error: string;
+  mainColor: string;
+};
+const defaultMainColor = "#60A5FA";
+export const lightTheme: ThemeColors = {
+  background: "#FFFFFF",
+  card: "#FFFFFF",
+  cardBorder: "#E5E5EA",
+  text: "#000000",
+  textSecondary: "#8E8E93",
+  accent: "#0A84FF",
+  buttonBackground: "#F2F2F7",
+  searchBackground: "#F2F2F7",
+  error: "#FF3B30",
+  mainColor: defaultMainColor,
+};
+export const darkTheme: ThemeColors = {
+  background: "#000000",
+  card: "#1C1C1E",
+  cardBorder: "#38383A",
+  text: "#FFFFFF",
+  textSecondary: "#8E8E93",
+  accent: "#0A84FF",
+  buttonBackground: "#2C2C2E",
+  searchBackground: "#1C1C1E",
+  error: "#FF453A",
+  mainColor: defaultMainColor,
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [isDark, setIsDark] = useState(true);
-  const [mainColor, setMainColor] = useState(defaultMainColor);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const systemColorScheme = useColorScheme();
+  const { config, updateConfig } = useStorage();
 
-  useEffect(() => {
-    // Load saved preferences
-    const loadPreferences = async () => {
-      try {
-        const [savedTheme, savedColor, savedOnboarding] = await Promise.all([
-          AsyncStorage.getItem("theme"),
-          AsyncStorage.getItem("mainColor"),
-          AsyncStorage.getItem("hasCompletedOnboarding"),
-        ]);
+  const isDark = config.theme === "dark";
+  const mainColor = config.mainColor || defaultMainColor;
 
-        if (savedTheme) {
-          setIsDark(savedTheme === "dark");
-        }
-        if (savedColor) {
-          setMainColor(savedColor);
-        }
-        if (savedOnboarding) {
-          setHasCompletedOnboarding(savedOnboarding === "true");
-        }
-      } catch (error) {
-        console.error("Error loading preferences:", error);
-      }
-    };
-
-    loadPreferences();
-  }, []);
-
-  const toggleTheme = async () => {
-    const newTheme = !isDark;
-    setIsDark(newTheme);
-    try {
-      await AsyncStorage.setItem("theme", newTheme ? "dark" : "light");
-    } catch (error) {
-      console.error("Error saving theme preference:", error);
-    }
-  };
-
-  const completeOnboarding = async () => {
-    try {
-      await AsyncStorage.setItem("hasCompletedOnboarding", "true");
-      setHasCompletedOnboarding(true);
-    } catch (error) {
-      console.error("Error saving onboarding status:", error);
-    }
-  };
-
-  const themeColors = {
+  const colors = {
     ...(isDark ? darkTheme : lightTheme),
     mainColor,
     accent: mainColor,
   };
 
-  const value = {
-    isDark,
-    toggleTheme,
-    colors: themeColors,
-    mainColor,
-    setMainColor,
-    hasCompletedOnboarding,
-    completeOnboarding,
+  const toggleTheme = async () => {
+    await updateConfig({ theme: isDark ? "light" : "dark" });
   };
 
-  return (
-    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
-  );
-}
+  const setMainColor = async (color: string) => {
+    await updateConfig({ mainColor: color });
+  };
 
-export function useTheme() {
+  const completeOnboarding = async () => {
+    await updateConfig({ hasCompletedOnboarding: true });
+  };
+
+  // Sync with system theme if not explicitly set
+  useEffect(() => {
+    if (systemColorScheme && !config.hasCompletedOnboarding) {
+      updateConfig({ theme: systemColorScheme });
+    }
+  }, [systemColorScheme]);
+
+  return (
+    <ThemeContext.Provider
+      value={{
+        isDark,
+        toggleTheme,
+        mainColor,
+        setMainColor,
+        colors,
+        completeOnboarding,
+      }}
+    >
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+
+export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (context === undefined) {
     throw new Error("useTheme must be used within a ThemeProvider");
   }
   return context;
-}
+};

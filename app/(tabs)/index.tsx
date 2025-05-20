@@ -127,6 +127,13 @@ const DEMO_ITEMS: ExtendedContentItem[] = [
   },
 ];
 
+// Add helper function to ensure URL has https prefix
+const ensureHttps = (url: string | undefined): string | undefined => {
+  if (!url) return undefined;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `https://${url}`;
+};
+
 const EmptyState = ({ onAddNew }: { onAddNew: () => void }) => {
   const { colors } = useTheme();
   const { t } = useLanguage();
@@ -177,11 +184,14 @@ export default function HomeScreen() {
     const newPreviews: Record<string, string> = {};
     items.forEach((item) => {
       if (item.url && item.id && !previews[item.id]) {
-        newPreviews[
-          item.id
-        ] = `https://api.microlink.io/?url=${encodeURIComponent(
-          item.url
-        )}&screenshot=true&meta=false&embed=screenshot.url&waitForTimeout=500`;
+        const httpsUrl = ensureHttps(item.url);
+        if (httpsUrl) {
+          newPreviews[
+            item.id
+          ] = `https://api.microlink.io/?url=${encodeURIComponent(
+            httpsUrl
+          )}&screenshot=true&meta=false&embed=screenshot.url&waitForTimeout=500`;
+        }
       }
     });
     if (Object.keys(newPreviews).length > 0) {
@@ -333,6 +343,15 @@ export default function HomeScreen() {
           >
             {item.title || "Untitled"}
           </Text>
+
+          {item.url && (
+            <Text
+              style={[styles.itemUrl, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {ensureHttps(item.url)}
+            </Text>
+          )}
 
           {item.description && !isGridView && (
             <Text
@@ -801,5 +820,10 @@ const styles = StyleSheet.create({
   },
   gridRow: {
     justifyContent: "space-between",
+  },
+  itemUrl: {
+    fontSize: 13,
+    marginBottom: 8,
+    opacity: 0.8,
   },
 });
