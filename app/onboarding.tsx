@@ -11,10 +11,16 @@ import {
   View,
 } from "react-native";
 import Animated, {
+  BounceIn,
   FadeIn,
+  FadeInDown,
+  FadeInUp,
   FadeOut,
   SlideInRight,
   SlideOutLeft,
+  useSharedValue,
+  withSpring,
+  ZoomIn,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLanguage } from "../lib/LanguageContext";
@@ -42,6 +48,8 @@ const OnboardingScreen = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedColor, setSelectedColor] = useState(mainColor);
   const colorScheme = useColorScheme();
+  const scale = useSharedValue(1);
+  const progress = useSharedValue(0);
 
   const colorOptions: ColorOption[] = [
     { value: "#007AFF", name: "Blue" },
@@ -56,12 +64,20 @@ const OnboardingScreen = () => {
     { code: "es", name: "Español", flag: "🇪🇸" },
   ] as const;
 
+  React.useEffect(() => {
+    progress.value = withSpring(currentStep / 3);
+  }, [currentStep]);
+
   const renderProgressDots = () => {
     return (
-      <View style={styles.progressDots}>
+      <Animated.View
+        entering={FadeInDown.delay(200).springify()}
+        style={styles.progressDots}
+      >
         {[0, 1, 2, 3].map((step) => (
-          <View
+          <Animated.View
             key={step}
+            entering={FadeIn.delay(step * 100)}
             style={[
               styles.progressDot,
               {
@@ -72,7 +88,7 @@ const OnboardingScreen = () => {
             ]}
           />
         ))}
-      </View>
+      </Animated.View>
     );
   };
 
@@ -85,57 +101,87 @@ const OnboardingScreen = () => {
             exiting={FadeOut}
             style={styles.stepContainer}
           >
-            <View style={styles.logoContainer}>
+            <Animated.View
+              entering={ZoomIn.delay(300).springify()}
+              style={styles.logoContainer}
+            >
               <Image
                 source={require("../assets/images/icon.png")}
                 style={styles.logo}
                 contentFit="contain"
               />
-              <Text style={[styles.appName, { color: colors.text }]}>
+              <Animated.Text
+                entering={FadeInUp.delay(500).springify()}
+                style={[styles.appName, { color: colors.text }]}
+              >
                 Savezy
-              </Text>
-            </View>
-            <Text style={[styles.title, { color: colors.text }]}>
+              </Animated.Text>
+            </Animated.View>
+            <Animated.Text
+              entering={FadeInUp.delay(700).springify()}
+              style={[styles.title, { color: colors.text }]}
+            >
               {t("onboarding.welcome")}
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            </Animated.Text>
+            <Animated.Text
+              entering={FadeInUp.delay(900).springify()}
+              style={[styles.subtitle, { color: colors.textSecondary }]}
+            >
               {t("onboarding.welcomeDescription")}
-            </Text>
+            </Animated.Text>
           </Animated.View>
         );
       case 1:
         return (
           <Animated.View
-            entering={SlideInRight}
+            entering={SlideInRight.springify()}
             exiting={SlideOutLeft}
             style={styles.stepContainer}
           >
-            <Text style={[styles.title, { color: colors.text }]}>
+            <Animated.Text
+              entering={FadeInDown.delay(200).springify()}
+              style={[styles.title, { color: colors.text }]}
+            >
               {t("onboarding.colorTitle")}
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            </Animated.Text>
+            <Animated.Text
+              entering={FadeInDown.delay(400).springify()}
+              style={[styles.subtitle, { color: colors.textSecondary }]}
+            >
               {t("settings.mainColorDescription")}
-            </Text>
-            <View style={styles.colorGrid}>
-              {colorOptions.map((color) => (
-                <Pressable
+            </Animated.Text>
+            <Animated.View
+              entering={FadeInUp.delay(600).springify()}
+              style={styles.colorGrid}
+            >
+              {colorOptions.map((color, index) => (
+                <Animated.View
                   key={color.value}
-                  style={[
-                    styles.colorOption,
-                    { backgroundColor: color.value },
-                    selectedColor === color.value && styles.selectedColor,
-                  ]}
-                  onPress={() => {
-                    setSelectedColor(color.value);
-                    setMainColor(color.value);
-                  }}
+                  entering={ZoomIn.delay(800 + index * 100).springify()}
                 >
-                  {selectedColor === color.value && (
-                    <Ionicons name="checkmark" size={24} color="white" />
-                  )}
-                </Pressable>
+                  <Pressable
+                    style={[
+                      styles.colorOption,
+                      { backgroundColor: color.value },
+                      selectedColor === color.value && styles.selectedColor,
+                    ]}
+                    onPress={() => {
+                      setSelectedColor(color.value);
+                      setMainColor(color.value);
+                      scale.value = withSpring(1.1, {}, () => {
+                        scale.value = withSpring(1);
+                      });
+                    }}
+                  >
+                    {selectedColor === color.value && (
+                      <Animated.View entering={BounceIn.delay(200)}>
+                        <Ionicons name="checkmark" size={24} color="white" />
+                      </Animated.View>
+                    )}
+                  </Pressable>
+                </Animated.View>
               ))}
-            </View>
+            </Animated.View>
             <View style={styles.colorNames}>
               {colorOptions.map((color) => (
                 <Text
@@ -155,97 +201,118 @@ const OnboardingScreen = () => {
       case 2:
         return (
           <Animated.View
-            entering={SlideInRight}
+            entering={SlideInRight.springify()}
             exiting={SlideOutLeft}
             style={styles.stepContainer}
           >
-            <Text style={[styles.title, { color: colors.text }]}>
+            <Animated.Text
+              entering={FadeInDown.delay(200).springify()}
+              style={[styles.title, { color: colors.text }]}
+            >
               {t("onboarding.languageTitle")}
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            </Animated.Text>
+            <Animated.Text
+              entering={FadeInDown.delay(400).springify()}
+              style={[styles.subtitle, { color: colors.textSecondary }]}
+            >
               {t("settings.languageDescription")}
-            </Text>
-            <View style={styles.optionsContainer}>
-              {languages.map((lang) => (
-                <Pressable
+            </Animated.Text>
+            <Animated.View
+              entering={FadeInUp.delay(600).springify()}
+              style={styles.optionsContainer}
+            >
+              {languages.map((lang, index) => (
+                <Animated.View
                   key={lang.code}
-                  style={[
-                    styles.languageOption,
-                    {
-                      backgroundColor: colors.card,
-                      borderColor: colors.cardBorder,
-                    },
-                    language === lang.code && {
-                      backgroundColor: mainColor + "20",
-                      borderColor: mainColor,
-                    },
-                  ]}
-                  onPress={() => setLanguage(lang.code)}
+                  entering={SlideInRight.delay(800 + index * 200).springify()}
                 >
-                  <Text style={styles.languageFlag}>{lang.flag}</Text>
-                  <Text
+                  <Pressable
                     style={[
-                      styles.languageName,
-                      { color: colors.text },
-                      language === lang.code && { color: mainColor },
+                      styles.languageOption,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.cardBorder,
+                      },
+                      language === lang.code && {
+                        backgroundColor: mainColor + "20",
+                        borderColor: mainColor,
+                      },
                     ]}
+                    onPress={() => setLanguage(lang.code)}
                   >
-                    {t(`languages.${lang.code}`)}
-                  </Text>
-                  {language === lang.code && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={24}
-                      color={mainColor}
-                    />
-                  )}
-                </Pressable>
+                    <Text style={styles.languageFlag}>{lang.flag}</Text>
+                    <Text
+                      style={[
+                        styles.languageName,
+                        { color: colors.text },
+                        language === lang.code && { color: mainColor },
+                      ]}
+                    >
+                      {t(`languages.${lang.code}`)}
+                    </Text>
+                    {language === lang.code && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={24}
+                        color={mainColor}
+                      />
+                    )}
+                  </Pressable>
+                </Animated.View>
               ))}
-            </View>
+            </Animated.View>
           </Animated.View>
         );
       case 3:
         return (
           <Animated.View
-            entering={SlideInRight}
+            entering={SlideInRight.springify()}
             exiting={SlideOutLeft}
             style={styles.stepContainer}
           >
-            <Text style={[styles.title, { color: colors.text }]}>
-              {t("onboarding.themeTitle")}
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              {t("settings.themeDescription")}
-            </Text>
-            <Pressable
-              style={[
-                styles.themeOption,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.cardBorder,
-                },
-                isDark && {
-                  backgroundColor: mainColor + "20",
-                  borderColor: mainColor,
-                },
-              ]}
-              onPress={toggleTheme}
+            <Animated.Text
+              entering={FadeInDown.delay(200).springify()}
+              style={[styles.title, { color: colors.text }]}
             >
-              <Ionicons
-                name={isDark ? "moon" : "sunny"}
-                size={24}
-                color={isDark ? mainColor : colors.text}
-              />
-              <Text
+              {t("onboarding.themeTitle")}
+            </Animated.Text>
+            <Animated.Text
+              entering={FadeInDown.delay(400).springify()}
+              style={[styles.subtitle, { color: colors.textSecondary }]}
+            >
+              {t("settings.themeDescription")}
+            </Animated.Text>
+            <Animated.View entering={ZoomIn.delay(600).springify()}>
+              <Pressable
                 style={[
-                  styles.themeText,
-                  { color: colors.text },
-                  isDark && { color: mainColor },
+                  styles.themeOption,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.cardBorder,
+                  },
+                  isDark && {
+                    backgroundColor: mainColor + "20",
+                    borderColor: mainColor,
+                  },
                 ]}
+                onPress={toggleTheme}
               >
-                {isDark ? t("common.on") : t("common.off")}
-              </Text>
-            </Pressable>
+                <Ionicons
+                  name={isDark ? "moon" : "sunny"}
+                  size={24}
+                  color={isDark ? mainColor : colors.text}
+                />
+                <Text
+                  style={[
+                    styles.themeText,
+                    { color: colors.text },
+                    isDark && { color: mainColor },
+                  ]}
+                >
+                  {isDark ? t("common.on") : t("common.off")}
+                </Text>
+              </Pressable>
+            </Animated.View>
           </Animated.View>
         );
       default:
@@ -277,7 +344,10 @@ const OnboardingScreen = () => {
     >
       {renderProgressDots()}
       {renderStep()}
-      <View style={[styles.navigation, { borderTopColor: colors.cardBorder }]}>
+      <Animated.View
+        entering={FadeInUp.delay(1000).springify()}
+        style={[styles.navigation, { borderTopColor: colors.cardBorder }]}
+      >
         {currentStep > 0 && (
           <Pressable
             style={[styles.backButton, { backgroundColor: colors.card }]}
@@ -298,7 +368,7 @@ const OnboardingScreen = () => {
               : t("onboarding.next")}
           </Text>
         </Pressable>
-      </View>
+      </Animated.View>
     </View>
   );
 };

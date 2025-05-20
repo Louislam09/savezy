@@ -1,5 +1,5 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Dimensions,
   Linking,
@@ -10,6 +10,18 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  Layout,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+  ZoomIn,
+  ZoomOut,
+} from "react-native-reanimated";
 import { useLanguage } from "../../lib/LanguageContext";
 import { useTheme } from "../../lib/ThemeContext";
 
@@ -92,12 +104,64 @@ const SettingItem = ({
   );
 };
 
+const AnimatedTouchableOpacity =
+  Animated.createAnimatedComponent(TouchableOpacity);
+
 export default function SettingsScreen() {
   const { colors, isDark, toggleTheme, mainColor, setMainColor } = useTheme();
   const { language, setLanguage, t } = useLanguage();
 
   const [colorModalVisible, setColorModalVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
+
+  // Animation values
+  const colorScale = useSharedValue(1);
+  const themeRotation = useSharedValue(0);
+  const rippleOpacity = useSharedValue(0);
+  const rippleScale = useSharedValue(0);
+  const prevColor = useSharedValue(mainColor);
+  const prevTheme = useSharedValue(isDark);
+
+  // Color change animation
+  useEffect(() => {
+    if (prevColor.value !== mainColor) {
+      rippleOpacity.value = 1;
+      rippleScale.value = 0;
+      rippleScale.value = withSequence(
+        withSpring(2, { damping: 10, stiffness: 100 }),
+        withTiming(0, { duration: 300 })
+      );
+      rippleOpacity.value = withTiming(0, { duration: 300 });
+      prevColor.value = mainColor;
+    }
+  }, [mainColor]);
+
+  // Theme change animation
+  useEffect(() => {
+    if (prevTheme.value !== isDark) {
+      themeRotation.value = withSequence(
+        withTiming(360, {
+          duration: 500,
+        }),
+        withTiming(0, { duration: 0 })
+      );
+      prevTheme.value = isDark;
+    }
+  }, [isDark]);
+
+  const rippleStyle = useAnimatedStyle(() => ({
+    position: "absolute",
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: mainColor + "40",
+    opacity: rippleOpacity.value,
+    transform: [{ scale: rippleScale.value }],
+  }));
+
+  const themeIconStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${themeRotation.value}deg` }],
+  }));
 
   const handleLanguageChange = useCallback(() => {
     setLanguageModalVisible(true);
@@ -113,8 +177,15 @@ export default function SettingsScreen() {
   }, []);
 
   const handleSelectColor = (color: string) => {
+    colorScale.value = withSequence(
+      withSpring(0.8, { damping: 10, stiffness: 100 }),
+      withSpring(1, { damping: 10, stiffness: 100 })
+    );
     setMainColor(color);
-    // setColorModalVisible(false);
+  };
+
+  const handleToggleTheme = () => {
+    toggleTheme();
   };
 
   const renderColorModal = () => (
@@ -125,7 +196,11 @@ export default function SettingsScreen() {
       onRequestClose={() => setColorModalVisible(false)}
     >
       <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+        <Animated.View
+          entering={FadeIn.duration(300)}
+          exiting={FadeOut.duration(200)}
+          style={[styles.modalContent, { backgroundColor: colors.card }]}
+        >
           <Text style={[styles.modalTitle, { color: colors.text }]}>
             {t("settings.selectMainColor")}
           </Text>
@@ -133,26 +208,38 @@ export default function SettingsScreen() {
             {t("settings.mainColorDescription")}
           </Text>
           <View style={styles.colorGrid}>
-            {MAIN_COLOR_OPTIONS.map((color) => (
-              <TouchableOpacity
+            {MAIN_COLOR_OPTIONS.map((color, index) => (
+              <Animated.View
                 key={color.value}
-                style={[
-                  styles.colorOption,
-                  { backgroundColor: color.value },
-                  mainColor === color.value && styles.selectedColor,
-                ]}
-                onPress={() => handleSelectColor(color.value)}
+                entering={FadeIn.delay(index * 100).springify()}
+                layout={Layout.springify()}
               >
-                {mainColor === color.value && (
-                  <Ionicons name="checkmark" size={24} color="white" />
-                )}
-              </TouchableOpacity>
+                <AnimatedTouchableOpacity
+                  style={[
+                    styles.colorOption,
+                    { backgroundColor: color.value },
+                    mainColor === color.value && styles.selectedColor,
+                  ]}
+                  onPress={() => handleSelectColor(color.value)}
+                >
+                  {mainColor === color.value && (
+                    <Animated.View
+                      entering={ZoomIn.springify()}
+                      exiting={ZoomOut.springify()}
+                    >
+                      <Ionicons name="checkmark" size={24} color="white" />
+                    </Animated.View>
+                  )}
+                </AnimatedTouchableOpacity>
+              </Animated.View>
             ))}
           </View>
           <View style={styles.colorNames}>
-            {MAIN_COLOR_OPTIONS.map((color) => (
-              <Text
+            {MAIN_COLOR_OPTIONS.map((color, index) => (
+              <Animated.Text
                 key={color.value}
+                entering={FadeIn.delay(index * 100 + 200)}
+                layout={Layout.springify()}
                 style={[
                   styles.colorName,
                   { color: colors.textSecondary },
@@ -160,18 +247,19 @@ export default function SettingsScreen() {
                 ]}
               >
                 {color.name}
-              </Text>
+              </Animated.Text>
             ))}
           </View>
-          <TouchableOpacity
+          <AnimatedTouchableOpacity
+            entering={FadeIn.delay(400)}
             style={[styles.modalButton, { backgroundColor: colors.cardBorder }]}
             onPress={() => setColorModalVisible(false)}
           >
             <Text style={[styles.modalButtonText, { color: colors.text }]}>
               {t("actions.cancel")}
             </Text>
-          </TouchableOpacity>
-        </View>
+          </AnimatedTouchableOpacity>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -247,6 +335,9 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.rippleContainer}>
+        <Animated.View style={rippleStyle} />
+      </View>
       <Text style={[styles.title, { color: colors.text }]}>
         {t("settings.title")}
       </Text>
@@ -259,13 +350,34 @@ export default function SettingsScreen() {
             value={LANGUAGES.find((lang) => lang.code === language)?.name}
             onPress={handleLanguageChange}
           />
-          <SettingItem
-            icon="moon"
-            label={t("settings.darkMode")}
-            onPress={toggleTheme}
-            showArrow={false}
-            value={isDark ? t("common.on") : t("common.off")}
-          />
+          <AnimatedTouchableOpacity
+            style={[
+              styles.settingItem,
+              { borderBottomColor: colors.cardBorder },
+            ]}
+            onPress={handleToggleTheme}
+          >
+            <View style={styles.settingItemLeft}>
+              <Animated.View style={themeIconStyle}>
+                <Feather
+                  name="moon"
+                  size={22}
+                  color={colors.text}
+                  style={styles.settingIcon}
+                />
+              </Animated.View>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>
+                {t("settings.darkMode")}
+              </Text>
+            </View>
+            <View style={styles.settingItemRight}>
+              <Text
+                style={[styles.settingValue, { color: colors.textSecondary }]}
+              >
+                {isDark ? t("common.on") : t("common.off")}
+              </Text>
+            </View>
+          </AnimatedTouchableOpacity>
           {/* <SettingItem
             icon="bell"
             label={t("settings.notifications")}
@@ -440,5 +552,15 @@ const styles = StyleSheet.create({
   modalButtonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  rippleContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    pointerEvents: "none",
   },
 });
