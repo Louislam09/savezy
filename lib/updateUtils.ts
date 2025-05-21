@@ -1,5 +1,4 @@
 import * as Updates from "expo-updates";
-import { Alert } from "react-native";
 import { Toast } from "toastify-react-native";
 
 export async function checkForUpdates() {
@@ -19,23 +18,8 @@ export async function fetchUpdate() {
   try {
     const update = await Updates.fetchUpdateAsync();
     if (update.isNew) {
-      // Notify user that update is ready to be installed
-      Alert.alert(
-        "Update Available",
-        "A new version is ready to install. Would you like to restart now?",
-        [
-          {
-            text: "Later",
-            style: "cancel",
-          },
-          {
-            text: "Restart",
-            onPress: async () => {
-              await Updates.reloadAsync();
-            },
-          },
-        ]
-      );
+      // Automatically reload the app when update is ready
+      await Updates.reloadAsync();
       return true;
     }
     return false;
