@@ -14,6 +14,7 @@ import ToastManager from "toastify-react-native";
 import { initDatabase } from "../lib/database";
 import { DatabaseProvider } from "../lib/DatabaseContext";
 import { LanguageProvider } from "../lib/LanguageContext";
+import { checkAndFetchUpdate } from "../lib/updateUtils";
 
 // Custom toast configuration
 const toastConfig = {
@@ -101,24 +102,25 @@ const styles = StyleSheet.create({
 });
 
 function RootLayoutNav() {
-  const {
-    config: { hasCompletedOnboarding },
-  } = useStorage();
   const segments = useSegments();
   const router = useRouter();
+  const { config } = useStorage();
 
   useEffect(() => {
+    // Check for updates when app starts
+    checkAndFetchUpdate();
+
     const inOnboardingGroup = segments[0] === "onboarding";
     const inTabsGroup = segments[0] === "(tabs)";
 
-    if (!hasCompletedOnboarding && !inOnboardingGroup) {
+    if (!config.hasCompletedOnboarding && !inOnboardingGroup) {
       // Redirect to onboarding if not completed
       router.replace("/onboarding");
-    } else if (hasCompletedOnboarding && inOnboardingGroup) {
+    } else if (config.hasCompletedOnboarding && inOnboardingGroup) {
       // Redirect to main app if onboarding is completed
       router.replace("/(tabs)");
     }
-  }, [hasCompletedOnboarding, segments]);
+  }, [config.hasCompletedOnboarding]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

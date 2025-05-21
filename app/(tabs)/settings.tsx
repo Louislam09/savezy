@@ -1,4 +1,5 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { useCallback, useEffect, useState } from "react";
 import {
   Dimensions,
@@ -25,6 +26,7 @@ import Animated, {
 import { useLanguage } from "../../lib/LanguageContext";
 import { useStorage } from "../../lib/StorageContext";
 import { useTheme } from "../../lib/ThemeContext";
+import { checkAndFetchUpdate } from "../../lib/updateUtils";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -60,6 +62,7 @@ type SettingItemProps = {
   value?: string;
   onPress: () => void;
   showArrow?: boolean;
+  isLoading?: boolean;
 };
 
 const SettingItem = ({
@@ -68,6 +71,7 @@ const SettingItem = ({
   value,
   onPress,
   showArrow = true,
+  isLoading = false,
 }: SettingItemProps) => {
   const { colors } = useTheme();
 
@@ -100,6 +104,14 @@ const SettingItem = ({
             color={colors.textSecondary}
           />
         )}
+        {isLoading && (
+          <Feather
+            name="loader"
+            size={22}
+            color={colors.textSecondary}
+            style={styles.loadingIcon}
+          />
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -112,9 +124,9 @@ export default function SettingsScreen() {
   const { colors, isDark, mainColor } = useTheme();
   const { config, updateConfig } = useStorage();
   const { t } = useLanguage();
-
   const [colorModalVisible, setColorModalVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
 
   // Animation values
   const colorScale = useSharedValue(1);
@@ -188,6 +200,15 @@ export default function SettingsScreen() {
 
   const handleToggleTheme = () => {
     updateConfig({ theme: isDark ? "light" : "dark" });
+  };
+
+  const handleCheckUpdate = async () => {
+    setIsCheckingUpdate(true);
+    try {
+      await checkAndFetchUpdate();
+    } finally {
+      setIsCheckingUpdate(false);
+    }
   };
 
   const renderColorModal = () => (
@@ -403,9 +424,15 @@ export default function SettingsScreen() {
             }
           />
           <SettingItem
+            icon="refresh-cw"
+            label={t("settings.checkUpdate")}
+            onPress={handleCheckUpdate}
+            isLoading={isCheckingUpdate}
+          />
+          <SettingItem
             icon="tag"
             label={t("settings.version")}
-            value="1.0.0"
+            value={Constants.expoConfig?.version || "1.0.0"}
             onPress={() => {}}
             showArrow={false}
           />
@@ -562,5 +589,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     pointerEvents: "none",
+  },
+  loadingIcon: {
+    marginLeft: 8,
   },
 });

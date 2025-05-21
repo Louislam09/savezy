@@ -29,6 +29,7 @@ export const translations = {
         "Select your preferred language for the app interface",
       themeDescription:
         "Choose between light and dark mode, or follow system settings",
+      checkUpdate: "Check for Updates",
     },
     languages: {
       en: "English",
@@ -152,6 +153,7 @@ export const translations = {
         "Selecciona tu idioma preferido para la interfaz de la aplicación",
       themeDescription:
         "Elige entre modo claro y oscuro, o sigue la configuración del sistema",
+      checkUpdate: "Buscar Actualizaciones",
     },
     languages: {
       en: "Inglés",
