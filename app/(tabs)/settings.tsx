@@ -122,8 +122,110 @@ const SettingItem = ({
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
 
+const ColorOptionButton = ({
+  color,
+  isSelected,
+  onPress,
+}: {
+  color: string;
+  isSelected: boolean;
+  onPress: () => void;
+}) => {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePress = () => {
+    scale.value = withSequence(
+      withSpring(0.8, { damping: 10, stiffness: 100 }),
+      withSpring(1, { damping: 10, stiffness: 100 })
+    );
+    onPress();
+  };
+
+  return (
+    <AnimatedTouchableOpacity
+      style={[
+        styles.colorOption,
+        { backgroundColor: color },
+        isSelected && styles.selectedColor,
+        animatedStyle,
+      ]}
+      onPress={handlePress}
+    >
+      {isSelected && (
+        <Animated.View
+          entering={ZoomIn.springify()}
+          exiting={ZoomOut.springify()}
+        >
+          <Ionicons name="checkmark" size={24} color="white" />
+        </Animated.View>
+      )}
+    </AnimatedTouchableOpacity>
+  );
+};
+
+const ThemeToggleButton = () => {
+  const { colors, isDark } = useTheme();
+  const { updateConfig } = useStorage();
+  const { t } = useLanguage();
+  const themeRotation = useSharedValue(0);
+  const prevTheme = useSharedValue(isDark);
+
+  useEffect(() => {
+    if (prevTheme.value !== isDark) {
+      themeRotation.value = withSequence(
+        withTiming(1, {
+          duration: 500,
+        }),
+        withTiming(0, { duration: 0 })
+      );
+      prevTheme.value = isDark;
+    }
+  }, [isDark]);
+
+  const themeIconStyle = useAnimatedStyle(() => {
+    const rotation = interpolate(
+      themeRotation.value,
+      [0, 1],
+      [0, 360],
+      Extrapolate.CLAMP
+    );
+    return {
+      transform: [{ rotate: `${rotation}deg` }],
+    };
+  });
+
+  return (
+    <AnimatedTouchableOpacity
+      style={[styles.settingItem, { borderBottomColor: colors.cardBorder }]}
+      onPress={() => updateConfig({ theme: isDark ? "light" : "dark" })}
+    >
+      <View style={styles.settingItemLeft}>
+        <Animated.View style={themeIconStyle}>
+          <Feather
+            name="moon"
+            size={22}
+            color={colors.text}
+            style={styles.settingIcon}
+          />
+        </Animated.View>
+        <Text style={[styles.settingLabel, { color: colors.text }]}>
+          {t("settings.darkMode")}
+        </Text>
+      </View>
+      <View style={styles.settingItemRight}>
+        <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
+          {isDark ? t("common.on") : t("common.off")}
+        </Text>
+      </View>
+    </AnimatedTouchableOpacity>
+  );
+};
+
 export default function SettingsScreen() {
-  const { colors, isDark, mainColor } = useTheme();
+  const { colors, mainColor } = useTheme();
   const { config, updateConfig } = useStorage();
   const { t } = useLanguage();
   const [colorModalVisible, setColorModalVisible] = useState(false);
@@ -131,12 +233,9 @@ export default function SettingsScreen() {
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
 
   // Animation values
-  const colorScale = useSharedValue(1);
-  const themeRotation = useSharedValue(0);
   const rippleOpacity = useSharedValue(0);
   const rippleScale = useSharedValue(0);
   const prevColor = useSharedValue(mainColor);
-  const prevTheme = useSharedValue(isDark);
 
   // Color change animation
   useEffect(() => {
@@ -152,19 +251,6 @@ export default function SettingsScreen() {
     }
   }, [mainColor]);
 
-  // Theme change animation
-  useEffect(() => {
-    if (prevTheme.value !== isDark) {
-      themeRotation.value = withSequence(
-        withTiming(1, {
-          duration: 500,
-        }),
-        withTiming(0, { duration: 0 })
-      );
-      prevTheme.value = isDark;
-    }
-  }, [isDark]);
-
   const rippleStyle = useAnimatedStyle(() => ({
     position: "absolute",
     width: 200,
@@ -174,19 +260,6 @@ export default function SettingsScreen() {
     opacity: rippleOpacity.value,
     transform: [{ scale: rippleScale.value }],
   }));
-
-  const themeIconStyle = useAnimatedStyle(() => {
-    "worklet";
-    const rotation = interpolate(
-      themeRotation.value,
-      [0, 1],
-      [0, 360],
-      Extrapolate.CLAMP
-    );
-    return {
-      transform: [{ rotate: `${rotation}deg` }],
-    };
-  }, []);
 
   const handleLanguageChange = useCallback(() => {
     setLanguageModalVisible(true);
@@ -202,15 +275,7 @@ export default function SettingsScreen() {
   }, []);
 
   const handleSelectColor = (color: string) => {
-    colorScale.value = withSequence(
-      withSpring(0.8, { damping: 10, stiffness: 100 }),
-      withSpring(1, { damping: 10, stiffness: 100 })
-    );
     updateConfig({ mainColor: color });
-  };
-
-  const handleToggleTheme = () => {
-    updateConfig({ theme: isDark ? "light" : "dark" });
   };
 
   const handleCheckUpdate = async () => {
@@ -248,23 +313,11 @@ export default function SettingsScreen() {
                 entering={FadeIn.delay(index * 100).springify()}
                 layout={Layout.springify()}
               >
-                <AnimatedTouchableOpacity
-                  style={[
-                    styles.colorOption,
-                    { backgroundColor: color.value },
-                    mainColor === color.value && styles.selectedColor,
-                  ]}
+                <ColorOptionButton
+                  color={color.value}
+                  isSelected={mainColor === color.value}
                   onPress={() => handleSelectColor(color.value)}
-                >
-                  {mainColor === color.value && (
-                    <Animated.View
-                      entering={ZoomIn.springify()}
-                      exiting={ZoomOut.springify()}
-                    >
-                      <Ionicons name="checkmark" size={24} color="white" />
-                    </Animated.View>
-                  )}
-                </AnimatedTouchableOpacity>
+                />
               </Animated.View>
             ))}
           </View>
@@ -386,34 +439,7 @@ export default function SettingsScreen() {
             }
             onPress={handleLanguageChange}
           />
-          <AnimatedTouchableOpacity
-            style={[
-              styles.settingItem,
-              { borderBottomColor: colors.cardBorder },
-            ]}
-            onPress={handleToggleTheme}
-          >
-            <View style={styles.settingItemLeft}>
-              <Animated.View style={themeIconStyle}>
-                <Feather
-                  name="moon"
-                  size={22}
-                  color={colors.text}
-                  style={styles.settingIcon}
-                />
-              </Animated.View>
-              <Text style={[styles.settingLabel, { color: colors.text }]}>
-                {t("settings.darkMode")}
-              </Text>
-            </View>
-            <View style={styles.settingItemRight}>
-              <Text
-                style={[styles.settingValue, { color: colors.textSecondary }]}
-              >
-                {isDark ? t("common.on") : t("common.off")}
-              </Text>
-            </View>
-          </AnimatedTouchableOpacity>
+          <ThemeToggleButton />
           <SettingItem
             icon="droplet"
             label={t("settings.mainColor")}
@@ -444,8 +470,8 @@ export default function SettingsScreen() {
             icon="tag"
             label={t("settings.version")}
             value={Constants.expoConfig?.version || "1.0.0"}
-            onPress={() => {}}
             showArrow={false}
+            onPress={() => {}}
           />
         </View>
       </ScrollView>

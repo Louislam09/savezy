@@ -1,6 +1,15 @@
 import { Feather } from "@expo/vector-icons";
-import { useEffect, useRef } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { useEffect } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import Animated, {
+  Extrapolate,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { useDatabase } from "../../lib/DatabaseContext";
 import { useLanguage } from "../../lib/LanguageContext";
 import { useTheme } from "../../lib/ThemeContext";
@@ -10,80 +19,72 @@ export default function ProfileScreen() {
   const { t } = useLanguage();
   const { colors } = useTheme();
 
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const cardAnimations = useRef(items.map(() => new Animated.Value(0))).current;
-
-  // Calculate statistics
+  // Stats
   const totalItems = items.length;
   const itemsByType = items.reduce((acc, item) => {
     acc[item.type] = (acc[item.type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
+  // Create a fixed number of animations (we'll use max 10 to be safe)
+  const MAX_ANIMATIONS = 10;
+  const cardAnimations = Array.from({ length: MAX_ANIMATIONS }, () =>
+    useSharedValue(0)
+  );
+
+  // Shared values
+  const fade = useSharedValue(0);
+  const scale = useSharedValue(0.9);
+  const pulse = useSharedValue(1);
+
+  // Animate on mount
   useEffect(() => {
-    // Header icon pulse animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+    // Reset all animations
+    cardAnimations.forEach((anim) => {
+      anim.value = 0;
+    });
 
-    // Fade in and scale up animation for the main content
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // Pulse loop
+    pulse.value = withRepeat(
+      withTiming(1.1, { duration: 1000 }),
+      -1,
+      true // reverse
+    );
 
-    // Staggered animation for stat cards
-    Animated.stagger(
-      100,
-      cardAnimations.map((anim) =>
-        Animated.spring(anim, {
-          toValue: 1,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        })
-      )
-    ).start();
-  }, []);
+    fade.value = withTiming(1, { duration: 800 });
+    scale.value = withTiming(1, { duration: 800 });
+
+    // Animate cards with a small delay
+    cardAnimations.forEach((anim, index) => {
+      setTimeout(() => {
+        anim.value = withSpring(1, { damping: 8 });
+      }, 200 + index * 100);
+    });
+  }, [items]); // Still keep items as dependency to reset animations when items change
+
+  // Animated styles
+  const headerStyle = useAnimatedStyle(() => ({
+    opacity: fade.value,
+    transform: [{ scale: scale.value }],
+  }));
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+  }));
+
+  const aboutStyle = useAnimatedStyle(() => ({
+    opacity: fade.value,
+    transform: [
+      {
+        translateY: interpolate(fade.value, [0, 1], [30, 0], Extrapolate.CLAMP),
+      },
+    ],
+  }));
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Animated.View
-        style={[
-          styles.header,
-          {
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-          },
-        ]}
-      >
-        <Animated.View
-          style={{
-            transform: [{ scale: pulseAnim }],
-          }}
-        >
+      <Animated.View style={[styles.header, headerStyle]}>
+        <Animated.View style={pulseStyle}>
           <Feather name="bar-chart-2" size={64} color={colors.accent} />
         </Animated.View>
         <Text style={[styles.title, { color: colors.text }]}>
@@ -96,17 +97,19 @@ export default function ProfileScreen() {
           style={[
             styles.statCard,
             { backgroundColor: colors.card },
-            {
-              opacity: cardAnimations[0],
+            useAnimatedStyle(() => ({
+              opacity: cardAnimations[0].value,
               transform: [
                 {
-                  translateY: cardAnimations[0].interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [50, 0],
-                  }),
+                  translateY: interpolate(
+                    cardAnimations[0].value,
+                    [0, 1],
+                    [50, 0],
+                    Extrapolate.CLAMP
+                  ),
                 },
               ],
-            },
+            })),
           ]}
         >
           <Text style={[styles.statValue, { color: colors.accent }]}>
@@ -117,50 +120,51 @@ export default function ProfileScreen() {
           </Text>
         </Animated.View>
 
-        {Object.entries(itemsByType).map(([type, count], index) => (
-          <Animated.View
-            key={type}
-            style={[
-              styles.statCard,
-              { backgroundColor: colors.card },
-              {
-                opacity: cardAnimations[index + 1],
-                transform: [
-                  {
-                    translateY: cardAnimations[index + 1].interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [50, 0],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <Text style={[styles.statValue, { color: colors.accent }]}>
-              {count}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              {t(("contentTypes." + type.toLowerCase()) as any)}
-            </Text>
-          </Animated.View>
-        ))}
+        {Object.entries(itemsByType).map(([type, count], index) => {
+          // Ensure we don't exceed our animation array bounds
+          const animIndex = Math.min(index + 1, MAX_ANIMATIONS - 1);
+          const animStyle = useAnimatedStyle(() => {
+            const animValue = cardAnimations[animIndex]?.value ?? 0;
+            return {
+              opacity: animValue,
+              transform: [
+                {
+                  translateY: interpolate(
+                    animValue,
+                    [0, 1],
+                    [50, 0],
+                    Extrapolate.CLAMP
+                  ),
+                },
+              ],
+            };
+          });
+
+          return (
+            <Animated.View
+              key={type}
+              style={[
+                styles.statCard,
+                { backgroundColor: colors.card },
+                animStyle,
+              ]}
+            >
+              <Text style={[styles.statValue, { color: colors.accent }]}>
+                {count}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                {t(("contentTypes." + type.toLowerCase()) as any)}
+              </Text>
+            </Animated.View>
+          );
+        })}
       </View>
 
       <Animated.View
         style={[
           styles.aboutContainer,
           { backgroundColor: colors.card },
-          {
-            opacity: fadeAnim,
-            transform: [
-              {
-                translateY: fadeAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [30, 0],
-                }),
-              },
-            ],
-          },
+          aboutStyle,
         ]}
       >
         <Text style={[styles.aboutTitle, { color: colors.text }]}>
