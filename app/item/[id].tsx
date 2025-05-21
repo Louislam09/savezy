@@ -9,7 +9,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ColorValue,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -27,6 +26,7 @@ import { useDatabase } from "../../lib/DatabaseContext";
 import { useLanguage } from "../../lib/LanguageContext";
 import { useTheme } from "../../lib/ThemeContext";
 import { ContentItem, ContentType } from "../../lib/database";
+import DirectionForm from "../forms/DirectionForm";
 import ImageForm from "../forms/ImageForm";
 import NewsForm from "../forms/NewsForm";
 import VideoForm from "../forms/VideoForm";
@@ -69,6 +69,37 @@ export default function ItemDetailScreen() {
   const [containerBackgroundColor, setContainerBackgroundColor] = useState(
     colors.background
   );
+
+  const getGradientColors = () => {
+    if (imageColors) {
+      if (imageColors.platform === "ios") {
+        return [
+          imageColors.background,
+          imageColors.primary,
+          imageColors.secondary,
+        ];
+      } else if (imageColors.platform === "android") {
+        return [
+          imageColors.dominant || imageColors.average || colors.background,
+          imageColors.vibrant || imageColors.lightVibrant || colors.background,
+          imageColors.darkVibrant || imageColors.muted || colors.background,
+        ];
+      } else if (imageColors.platform === "web") {
+        return [
+          (imageColors as any).dominant ||
+            (imageColors as any).average ||
+            colors.background,
+          (imageColors as any).vibrant ||
+            (imageColors as any).lightVibrant ||
+            colors.background,
+          (imageColors as any).darkVibrant ||
+            (imageColors as any).muted ||
+            colors.background,
+        ];
+      }
+    }
+    return [colors.background, colors.card, colors.cardBorder];
+  };
 
   const [item, setItem] = useState<ContentItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -335,53 +366,29 @@ export default function ItemDetailScreen() {
     );
   }
 
-  const renderForm = () => {
-    if (!isEditing) return null;
-
-    switch (item.type) {
-      case ContentType.IMAGE:
-      case ContentType.MEME:
-        return <ImageForm item={item} onCancel={() => setIsEditing(false)} />;
-      case ContentType.WEBSITE:
-        return <WebsiteForm item={item} onCancel={() => setIsEditing(false)} />;
-      case ContentType.NEWS:
-        return <NewsForm item={item} onCancel={() => setIsEditing(false)} />;
+  const getFormComponent = (type: ContentType) => {
+    switch (type) {
       case ContentType.VIDEO:
-        return <VideoForm item={item} onCancel={() => setIsEditing(false)} />;
+        return VideoForm;
+      case ContentType.MEME:
+      case ContentType.IMAGE:
+        return ImageForm;
+      case ContentType.NEWS:
+        return NewsForm;
+      case ContentType.WEBSITE:
+        return WebsiteForm;
+      case ContentType.DIRECTION:
+        return DirectionForm;
       default:
-        return null;
+        throw new Error(`Unknown content type: ${type}`);
     }
   };
 
-  // Determine gradient colors based on platform result
-  const getGradientColors = (): ColorValue[] => {
-    if (!imageColors) return [colors.background, colors.background];
+  const renderForm = () => {
+    if (!isEditing) return null;
 
-    if (imageColors.platform === "ios") {
-      if (imageColors.primary && imageColors.background) {
-        return [imageColors.primary, imageColors.background];
-      } else if (imageColors.background) {
-        return [colors.background, imageColors.background];
-      }
-    } else if (imageColors.platform === "android") {
-      if (imageColors.dominant && imageColors.average) {
-        return [imageColors.dominant, imageColors.average];
-      } else if (imageColors.dominant) {
-        return [imageColors.dominant, colors.background];
-      } else if (imageColors.average) {
-        return [imageColors.average, colors.background];
-      }
-    } else if (imageColors.platform === "web") {
-      if (imageColors.dominant) {
-        return [imageColors.dominant, colors.background];
-      } else if (imageColors.vibrant) {
-        return [imageColors.vibrant, colors.background];
-      } else if (imageColors.lightVibrant) {
-        return [imageColors.lightVibrant, colors.background];
-      }
-    }
-
-    return [colors.background, colors.background];
+    const FormComponent = getFormComponent(item.type);
+    return <FormComponent item={item} onCancel={() => setIsEditing(false)} />;
   };
 
   const renderContent = () => {

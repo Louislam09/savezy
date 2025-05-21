@@ -46,6 +46,7 @@ export const translations = {
       news: "News",
       website: "Website",
       image: "Image",
+      direction: "Direction",
     },
     actions: {
       save: "Save",
@@ -58,6 +59,7 @@ export const translations = {
       upload: "Upload",
       favorite: "Favorite",
       rate: "Rate",
+      changeLocation: "Change Location",
     },
     common: {
       search: "Search saved items...",
@@ -106,6 +108,15 @@ export const translations = {
       removedFromFavorites: "Removed from favorites",
       ratingAdded: "Rating added",
       source: "Source",
+      directions: "Directions",
+      location: "Location",
+      latitude: "Latitude",
+      longitude: "Longitude",
+      selectLocation: "Select Location",
+      changeLocation: "Change Location",
+      invalidLatitude: "Invalid latitude value",
+      invalidLongitude: "Invalid longitude value",
+      directionsRequired: "Directions are required",
     },
     alerts: {
       deleteConfirm: "Are you sure you want to delete this item?",
@@ -170,6 +181,7 @@ export const translations = {
       news: "Noticias",
       website: "Sitio Web",
       image: "Imagen",
+      direction: "Dirección",
     },
     actions: {
       save: "Guardar",
@@ -182,6 +194,7 @@ export const translations = {
       upload: "Subir",
       favorite: "Favorito",
       rate: "Calificar",
+      changeLocation: "Cambiar Ubicación",
     },
     common: {
       search: "Buscar elementos guardados...",
@@ -231,6 +244,15 @@ export const translations = {
       removedFromFavorites: "Eliminado de favoritos",
       ratingAdded: "Calificación añadida",
       source: "Fuente",
+      directions: "Direcciones",
+      location: "Ubicación",
+      latitude: "Latitud",
+      longitude: "Longitud",
+      selectLocation: "Seleccionar Ubicación",
+      changeLocation: "Cambiar Ubicación",
+      invalidLatitude: "Valor de latitud inválido",
+      invalidLongitude: "Valor de longitud inválido",
+      directionsRequired: "Las direcciones son requeridas",
     },
     alerts: {
       deleteConfirm: "¿Estás seguro de que quieres eliminar este elemento?",

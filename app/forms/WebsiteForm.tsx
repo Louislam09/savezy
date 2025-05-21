@@ -93,7 +93,8 @@ export default function WebsiteForm({ item, onCancel }: WebsiteFormProps) {
             <Feather name="x" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {item ? t("common.editContent") : t("common.saveNewContent")}
+            {item ? t("actions.edit") : t("actions.add")}{" "}
+            {t("contentTypes.website" as any)}
           </Text>
           <TouchableOpacity
             onPress={handleSubmit}

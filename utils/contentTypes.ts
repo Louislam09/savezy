@@ -4,6 +4,7 @@ export enum ContentType {
   NEWS = "News",
   WEBSITE = "Website",
   IMAGE = "Image",
+  DIRECTION = "Direction",
 }
 
 export function getCollectionForType(type: ContentType): string {
@@ -18,6 +19,8 @@ export function getCollectionForType(type: ContentType): string {
       return "websites";
     case ContentType.IMAGE:
       return "images";
+    case ContentType.DIRECTION:
+      return "directions";
     default:
       throw new Error(`Unknown content type: ${type}`);
   }

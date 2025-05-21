@@ -64,6 +64,12 @@ const contentTypes: ContentTypeConfig[] = [
     icon: "image",
     form: "/forms/ImageForm?type=Image",
   },
+  {
+    id: ContentType.DIRECTION,
+    label: "Direction",
+    icon: "map-pin",
+    form: "/forms/DirectionForm",
+  },
 ];
 
 // Add sample data

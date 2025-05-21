@@ -6,6 +6,7 @@ export enum ContentType {
   NEWS = "News",
   WEBSITE = "Website",
   IMAGE = "Image",
+  DIRECTION = "Direction",
 }
 
 export type ContentItem = {
@@ -21,10 +22,13 @@ export type ContentItem = {
   tags?: string[];
   created?: string;
   isFavorite?: boolean;
+  directions?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 export async function initDatabase(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 2;
+  const DATABASE_VERSION = 3;
   const versionResult = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version"
   );
@@ -61,6 +65,15 @@ export async function initDatabase(db: SQLiteDatabase) {
     currentDbVersion = 2;
   }
 
+  if (currentDbVersion === 2) {
+    await db.execAsync(`
+      ALTER TABLE contents ADD COLUMN directions TEXT;
+      ALTER TABLE contents ADD COLUMN latitude REAL;
+      ALTER TABLE contents ADD COLUMN longitude REAL;
+    `);
+    currentDbVersion = 3;
+  }
+
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
 }
 
@@ -70,7 +83,7 @@ export async function saveContent(
 ): Promise<ContentItem> {
   if (content.id) {
     await db.runAsync(
-      `UPDATE contents SET type = ?, url = ?, title = ?, imageUrl = ?, description = ?, summary = ?, comment = ?, category = ?, tags = ?, isFavorite = ? WHERE id = ?`,
+      `UPDATE contents SET type = ?, url = ?, title = ?, imageUrl = ?, description = ?, summary = ?, comment = ?, category = ?, tags = ?, isFavorite = ?, directions = ?, latitude = ?, longitude = ? WHERE id = ?`,
       [
         content.type,
         content.url || null,
@@ -82,14 +95,17 @@ export async function saveContent(
         content.category || null,
         content.tags ? JSON.stringify(content.tags) : null,
         content.isFavorite ? 1 : 0,
+        content.directions || null,
+        content.latitude || null,
+        content.longitude || null,
         content.id,
       ]
     );
     return content;
   } else {
     const result = await db.runAsync(
-      `INSERT INTO contents (type, url, title, imageUrl, description, summary, comment, category, tags, isFavorite)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO contents (type, url, title, imageUrl, description, summary, comment, category, tags, isFavorite, directions, latitude, longitude)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         content.type,
         content.url || null,
@@ -101,6 +117,9 @@ export async function saveContent(
         content.category || null,
         content.tags ? JSON.stringify(content.tags) : null,
         content.isFavorite ? 1 : 0,
+        content.directions || null,
+        content.latitude || null,
+        content.longitude || null,
       ]
     );
 

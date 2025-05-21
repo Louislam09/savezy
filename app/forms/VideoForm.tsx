@@ -95,7 +95,8 @@ export default function VideoForm({ item, onCancel }: VideoFormProps) {
             <Feather name="x" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {item ? t("common.editContent") : t("common.saveNewContent")}
+            {item ? t("actions.edit") : t("actions.add")}{" "}
+            {t("contentTypes.video" as any)}
           </Text>
           <TouchableOpacity
             onPress={handleSubmit}

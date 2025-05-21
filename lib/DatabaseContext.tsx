@@ -49,8 +49,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const saveItem = async (content: ContentItem): Promise<ContentItem> => {
     try {
       const result = await db.runAsync(
-        `INSERT INTO contents (type, url, title, imageUrl, description, summary, comment, category, tags, isFavorite)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO contents (type, url, title, imageUrl, description, summary, comment, category, tags, isFavorite, directions, latitude, longitude)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           content.type,
           content.url || null,
@@ -62,6 +62,9 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           content.category || null,
           content.tags ? JSON.stringify(content.tags) : null,
           content.isFavorite ? 1 : 0,
+          content.directions || null,
+          content.latitude || null,
+          content.longitude || null,
         ]
       );
 
@@ -90,7 +93,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       await db.runAsync(
         `UPDATE contents 
          SET type = ?, url = ?, title = ?, imageUrl = ?, description = ?, 
-             summary = ?, comment = ?, category = ?, tags = ?, isFavorite = ?
+             summary = ?, comment = ?, category = ?, tags = ?, isFavorite = ?,
+             directions = ?, latitude = ?, longitude = ?
          WHERE id = ?`,
         [
           updatedItem.type,
@@ -103,6 +107,9 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           updatedItem.category || null,
           updatedItem.tags ? JSON.stringify(updatedItem.tags) : null,
           updatedItem.isFavorite ? 1 : 0,
+          updatedItem.directions || null,
+          updatedItem.latitude || null,
+          updatedItem.longitude || null,
           id,
         ]
       );

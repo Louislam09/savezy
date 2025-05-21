@@ -134,7 +134,8 @@ export default function ImageForm({ item, onCancel }: ImageFormProps) {
             <Feather name="x" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {item ? t("common.editContent") : t("common.saveNewContent")}
+            {item ? t("actions.edit") : t("actions.add")}{" "}
+            {t("contentTypes.image" as any)}
           </Text>
           <TouchableOpacity
             onPress={handleSubmit}
