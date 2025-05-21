@@ -3,10 +3,12 @@ import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   Dimensions,
   FlatList,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -160,6 +162,213 @@ const EmptyState = ({ onAddNew }: { onAddNew: () => void }) => {
   );
 };
 
+// Add this new component for animated cards
+const AnimatedCard = ({
+  item,
+  onPress,
+  colors,
+  isDark,
+  isGridView,
+  cardWidth,
+  contentTypes,
+}: {
+  item: ExtendedContentItem;
+  onPress: () => void;
+  colors: any;
+  isDark: boolean;
+  isGridView: boolean;
+  cardWidth: number;
+  contentTypes: ContentTypeConfig[];
+}) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fade in animation when component mounts
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+
+    // Set preview URL
+    if (item.url && item.id) {
+      const httpsUrl = ensureHttps(item.url);
+      if (httpsUrl) {
+        setPreviewUrl(
+          `https://api.microlink.io/?url=${encodeURIComponent(
+            httpsUrl
+          )}&screenshot=true&meta=false&embed=screenshot.url&waitForTimeout=500`
+        );
+      }
+    }
+  }, []);
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.98,
+      friction: 8,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 8,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const renderTags = () => {
+    if (!item.tags || item.tags.length === 0) return null;
+    return (
+      <View style={styles.tagsContainer}>
+        {item.tags.map((tag, index) => (
+          <View
+            key={index}
+            style={[
+              styles.tagChip,
+              {
+                backgroundColor: isDark
+                  ? "rgba(255, 255, 255, 0.1)"
+                  : "rgba(0, 0, 0, 0.05)",
+              },
+            ]}
+          >
+            <Text style={[styles.tagText, { color: colors.textSecondary }]}>
+              #{tag.toLowerCase()}
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  const renderDate = () => {
+    return (
+      <View style={styles.dateContainer}>
+        <Feather
+          name="calendar"
+          size={14}
+          color={colors.textSecondary}
+          style={styles.dateIcon}
+        />
+        <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+          {item.date || "Apr 30, 2025"}
+        </Text>
+      </View>
+    );
+  };
+
+  return (
+    <Animated.View
+      style={[
+        {
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+    >
+      <Pressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={({ pressed }) => [
+          styles.itemCard,
+          {
+            backgroundColor: colors.card,
+            width: cardWidth,
+            marginHorizontal: isGridView ? 4 : 0,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.contentTypeIndicator,
+            {
+              backgroundColor: isDark
+                ? "rgba(0, 0, 0, 0.5)"
+                : "rgba(255, 255, 255, 0.9)",
+              borderWidth: isDark ? 0 : 1,
+              borderColor: colors.cardBorder,
+            },
+          ]}
+        >
+          <Feather
+            name={contentTypes.find((t) => t.id === item.type)?.icon || "file"}
+            size={16}
+            color={colors.text}
+          />
+          <Text style={[styles.contentTypeText, { color: colors.text }]}>
+            {item.type}
+          </Text>
+        </View>
+
+        {item.url ? (
+          <Image
+            source={previewUrl || undefined}
+            style={[styles.itemImage, { height: isGridView ? 120 : 200 }]}
+            contentFit="cover"
+            placeholder={null}
+            transition={200}
+          />
+        ) : item.imageUrl ? (
+          <Image
+            source={item.imageUrl}
+            style={[styles.itemImage, { height: isGridView ? 120 : 200 }]}
+            contentFit="cover"
+            placeholder={null}
+            transition={200}
+          />
+        ) : null}
+
+        <View style={[styles.itemContent, { padding: isGridView ? 12 : 20 }]}>
+          <Text
+            style={[
+              styles.itemTitle,
+              {
+                color: colors.text,
+                fontSize: isGridView ? 16 : 20,
+                lineHeight: isGridView ? 22 : 28,
+              },
+            ]}
+            numberOfLines={2}
+          >
+            {item.title || "Untitled"}
+          </Text>
+
+          {item.url && (
+            <Text
+              style={[styles.itemUrl, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {ensureHttps(item.url)}
+            </Text>
+          )}
+
+          {item.description && !isGridView && (
+            <Text
+              style={[styles.itemDescription, { color: colors.textSecondary }]}
+              numberOfLines={2}
+            >
+              {item.description}
+            </Text>
+          )}
+
+          <View style={styles.itemFooter}>
+            {renderDate()}
+            {renderTags()}
+          </View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const { items: dbItems, loading, deleteItem } = useDatabase();
@@ -236,138 +445,16 @@ export default function HomeScreen() {
   };
 
   const renderItem = ({ item }: { item: ExtendedContentItem }) => {
-    const renderTags = () => {
-      if (!item.tags || item.tags.length === 0) return null;
-      return (
-        <View style={styles.tagsContainer}>
-          {item.tags.map((tag, index) => (
-            <View
-              key={index}
-              style={[
-                styles.tagChip,
-                {
-                  backgroundColor: isDark
-                    ? "rgba(255, 255, 255, 0.1)"
-                    : "rgba(0, 0, 0, 0.05)",
-                },
-              ]}
-            >
-              <Text style={[styles.tagText, { color: colors.textSecondary }]}>
-                #{tag.toLowerCase()}
-              </Text>
-            </View>
-          ))}
-        </View>
-      );
-    };
-
-    const renderDate = () => {
-      return (
-        <View style={styles.dateContainer}>
-          <Feather
-            name="calendar"
-            size={14}
-            color={colors.textSecondary}
-            style={styles.dateIcon}
-          />
-          <Text style={[styles.dateText, { color: colors.textSecondary }]}>
-            {item.date || "Apr 30, 2025"}
-          </Text>
-        </View>
-      );
-    };
-
     return (
-      <TouchableOpacity
-        style={[
-          styles.itemCard,
-          {
-            backgroundColor: colors.card,
-            width: cardWidth,
-            marginHorizontal: isGridView ? 4 : 0,
-          },
-        ]}
+      <AnimatedCard
+        item={item}
         onPress={() => router.push(`/item/${item.id}`)}
-      >
-        <View
-          style={[
-            styles.contentTypeIndicator,
-            {
-              backgroundColor: isDark
-                ? "rgba(0, 0, 0, 0.5)"
-                : "rgba(255, 255, 255, 0.9)",
-              borderWidth: isDark ? 0 : 1,
-              borderColor: colors.cardBorder,
-            },
-          ]}
-        >
-          <Feather
-            name={contentTypes.find((t) => t.id === item.type)?.icon || "file"}
-            size={16}
-            color={colors.text}
-          />
-          <Text style={[styles.contentTypeText, { color: colors.text }]}>
-            {item.type}
-          </Text>
-        </View>
-
-        {item.url ? (
-          <Image
-            source={getPreviewUrl(item) || undefined}
-            style={[styles.itemImage, { height: isGridView ? 120 : 200 }]}
-            contentFit="cover"
-            placeholder={null}
-            transition={200}
-          />
-        ) : item.imageUrl ? (
-          <Image
-            source={item.imageUrl}
-            style={[styles.itemImage, { height: isGridView ? 120 : 200 }]}
-            contentFit="cover"
-            placeholder={null}
-            transition={200}
-          />
-        ) : null}
-
-        <View style={[styles.itemContent, { padding: isGridView ? 12 : 20 }]}>
-          <Text
-            style={[
-              styles.itemTitle,
-              {
-                color: colors.text,
-                fontSize: isGridView ? 16 : 20,
-                lineHeight: isGridView ? 22 : 28,
-              },
-            ]}
-            numberOfLines={2}
-          >
-            {item.title || "Untitled"}
-          </Text>
-
-          {item.url && (
-            <Text
-              style={[styles.itemUrl, { color: colors.textSecondary }]}
-              numberOfLines={1}
-            >
-              {ensureHttps(item.url)}
-            </Text>
-          )}
-
-          {item.description && !isGridView && (
-            <Text
-              style={[styles.itemDescription, { color: colors.textSecondary }]}
-              numberOfLines={2}
-            >
-              {item.description}
-            </Text>
-          )}
-
-          <View style={styles.itemFooter}>
-            {renderDate()}
-            {renderTags()}
-          </View>
-        </View>
-      </TouchableOpacity>
+        colors={colors}
+        isDark={isDark}
+        isGridView={isGridView}
+        cardWidth={cardWidth}
+        contentTypes={contentTypes}
+      />
     );
   };
 

@@ -12,8 +12,10 @@ import {
   View,
 } from "react-native";
 import Animated, {
+  Extrapolate,
   FadeIn,
   FadeOut,
+  interpolate,
   Layout,
   useAnimatedStyle,
   useSharedValue,
@@ -154,7 +156,7 @@ export default function SettingsScreen() {
   useEffect(() => {
     if (prevTheme.value !== isDark) {
       themeRotation.value = withSequence(
-        withTiming(360, {
+        withTiming(1, {
           duration: 500,
         }),
         withTiming(0, { duration: 0 })
@@ -173,9 +175,18 @@ export default function SettingsScreen() {
     transform: [{ scale: rippleScale.value }],
   }));
 
-  const themeIconStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${themeRotation.value}deg` }],
-  }));
+  const themeIconStyle = useAnimatedStyle(() => {
+    "worklet";
+    const rotation = interpolate(
+      themeRotation.value,
+      [0, 1],
+      [0, 360],
+      Extrapolate.CLAMP
+    );
+    return {
+      transform: [{ rotate: `${rotation}deg` }],
+    };
+  }, []);
 
   const handleLanguageChange = useCallback(() => {
     setLanguageModalVisible(true);

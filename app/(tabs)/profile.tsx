@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, StyleSheet, Text, View } from "react-native";
 import { useDatabase } from "../../lib/DatabaseContext";
 import { useLanguage } from "../../lib/LanguageContext";
 import { useTheme } from "../../lib/ThemeContext";
@@ -9,6 +10,12 @@ export default function ProfileScreen() {
   const { t } = useLanguage();
   const { colors } = useTheme();
 
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const cardAnimations = useRef(items.map(() => new Animated.Value(0))).current;
+
   // Calculate statistics
   const totalItems = items.length;
   const itemsByType = items.reduce((acc, item) => {
@@ -16,29 +23,118 @@ export default function ProfileScreen() {
     return acc;
   }, {} as Record<string, number>);
 
+  useEffect(() => {
+    // Header icon pulse animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Fade in and scale up animation for the main content
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Staggered animation for stat cards
+    Animated.stagger(
+      100,
+      cardAnimations.map((anim) =>
+        Animated.spring(anim, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        })
+      )
+    ).start();
+  }, []);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <Feather name="bar-chart-2" size={64} color={colors.accent} />
+      <Animated.View
+        style={[
+          styles.header,
+          {
+            opacity: fadeAnim,
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}
+      >
+        <Animated.View
+          style={{
+            transform: [{ scale: pulseAnim }],
+          }}
+        >
+          <Feather name="bar-chart-2" size={64} color={colors.accent} />
+        </Animated.View>
         <Text style={[styles.title, { color: colors.text }]}>
           {t("profile.stats")}
         </Text>
-      </View>
+      </Animated.View>
 
       <View style={styles.statsContainer}>
-        <View style={[styles.statCard, { backgroundColor: colors.card }]}>
+        <Animated.View
+          style={[
+            styles.statCard,
+            { backgroundColor: colors.card },
+            {
+              opacity: cardAnimations[0],
+              transform: [
+                {
+                  translateY: cardAnimations[0].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [50, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
           <Text style={[styles.statValue, { color: colors.accent }]}>
             {totalItems}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
             {t("profile.totalItems")}
           </Text>
-        </View>
+        </Animated.View>
 
-        {Object.entries(itemsByType).map(([type, count]) => (
-          <View
+        {Object.entries(itemsByType).map(([type, count], index) => (
+          <Animated.View
             key={type}
-            style={[styles.statCard, { backgroundColor: colors.card }]}
+            style={[
+              styles.statCard,
+              { backgroundColor: colors.card },
+              {
+                opacity: cardAnimations[index + 1],
+                transform: [
+                  {
+                    translateY: cardAnimations[index + 1].interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [50, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
           >
             <Text style={[styles.statValue, { color: colors.accent }]}>
               {count}
@@ -46,18 +142,34 @@ export default function ProfileScreen() {
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
               {t(("contentTypes." + type.toLowerCase()) as any)}
             </Text>
-          </View>
+          </Animated.View>
         ))}
       </View>
 
-      <View style={[styles.aboutContainer, { backgroundColor: colors.card }]}>
+      <Animated.View
+        style={[
+          styles.aboutContainer,
+          { backgroundColor: colors.card },
+          {
+            opacity: fadeAnim,
+            transform: [
+              {
+                translateY: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [30, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
         <Text style={[styles.aboutTitle, { color: colors.text }]}>
           {t("profile.aboutTitle")}
         </Text>
         <Text style={[styles.aboutText, { color: colors.textSecondary }]}>
           {t("profile.aboutText")}
         </Text>
-      </View>
+      </Animated.View>
     </View>
   );
 }
