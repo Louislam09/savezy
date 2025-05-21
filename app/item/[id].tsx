@@ -4,10 +4,12 @@ import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ColorValue,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -18,6 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { getColors, ImageColorsResult } from "react-native-image-colors";
 import ImageView from "react-native-image-viewing";
 import { Toast } from "toastify-react-native";
 import { useDatabase } from "../../lib/DatabaseContext";
@@ -29,20 +32,43 @@ import NewsForm from "../forms/NewsForm";
 import VideoForm from "../forms/VideoForm";
 import WebsiteForm from "../forms/WebsiteForm";
 
-// Add helper function to ensure URL has https prefix
 const ensureHttps = (url: string | undefined): string | undefined => {
   if (!url) return undefined;
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   return `https://${url}`;
 };
 
+const isColorLight = (color: string): boolean => {
+  if (!color) return false;
+
+  // Remove # if present
+  const hex = color.replace(/^#/, "");
+
+  // Parse r, g, b values
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+
+  // Calculate luminance (a common approximation)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+  // Return true if luminance is above a threshold
+  return luminance > 0.5; // Threshold can be adjusted
+};
+
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { items, deleteItem, saveItem } = useDatabase();
-  const { colors } = useTheme();
+  const { items, deleteItem, updateItem } = useDatabase();
+  const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   const deletedItemRef = useRef<ContentItem | null>(null);
+  const [imageColors, setImageColors] = useState<ImageColorsResult | null>(
+    null
+  );
+  const [containerBackgroundColor, setContainerBackgroundColor] = useState(
+    colors.background
+  );
 
   const [item, setItem] = useState<ContentItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -61,20 +87,67 @@ export default function ItemDetailScreen() {
     }
   }, [id, items]);
 
+  useEffect(() => {
+    const fetchColors = async () => {
+      const imageUrl =
+        item?.imageUrl ||
+        (item?.url && item?.type !== ContentType.IMAGE
+          ? imagePreview
+          : undefined);
+
+      if (imageUrl) {
+        try {
+          const colorsResult = await getColors(imageUrl, {
+            fallback: colors.background,
+            cache: true,
+            key: imageUrl,
+          });
+          setImageColors(colorsResult);
+
+          if (colorsResult) {
+            let bgColor = colors.background;
+            if (colorsResult.platform === "ios") {
+              bgColor = colorsResult.background;
+            } else if (colorsResult.platform === "android") {
+              bgColor =
+                colorsResult.dominant ||
+                colorsResult.average ||
+                colors.background;
+            } else if (colorsResult.platform === "web") {
+              bgColor =
+                colorsResult.dominant ||
+                (colorsResult as any).average ||
+                colors.background;
+            }
+            setContainerBackgroundColor(bgColor);
+          } else {
+            setContainerBackgroundColor(colors.background);
+          }
+        } catch (error) {
+          console.error("Failed to get image colors:", error);
+          setImageColors(null);
+          setContainerBackgroundColor(colors.background);
+        }
+      } else {
+        setImageColors(null);
+        setContainerBackgroundColor(colors.background);
+      }
+    };
+
+    fetchColors();
+  }, [item?.imageUrl, item?.url, item?.type, imagePreview, colors.background]);
+
   const handleDelete = async () => {
     if (!item?.id) return;
 
     try {
       setShowDeleteConfirm(false);
 
-      // Store the item before deleting
       deletedItemRef.current = { ...item };
       await deleteItem(item.id);
 
-      // Navigate back first
       router.back();
 
-      // Show undo toast after navigation
       setTimeout(() => {
         Toast.show({
           type: "info",
@@ -85,11 +158,11 @@ export default function ItemDetailScreen() {
 
         Toast.show({
           type: "success",
-          text1: t("common.itemRestored"),
+          text1: t("common.itemDeleted"),
           position: "bottom",
           visibilityTime: 2000,
         });
-      }, 100); // Small delay to ensure navigation is complete
+      }, 100);
     } catch (error) {
       Toast.show({
         type: "error",
@@ -104,7 +177,6 @@ export default function ItemDetailScreen() {
   const handleShare = async () => {
     try {
       if (item?.type === ContentType.IMAGE && item?.imageUrl) {
-        // Check if sharing is available
         const isAvailable = await Sharing.isAvailableAsync();
         if (!isAvailable) {
           throw new Error("Sharing is not available on this device");
@@ -112,7 +184,6 @@ export default function ItemDetailScreen() {
 
         let imageUri = item.imageUrl;
 
-        // If it's a remote URL, download it first
         if (item.imageUrl.startsWith("http")) {
           const fileUri = FileSystem.documentDirectory + "temp_image.jpg";
           const downloadResult = await FileSystem.downloadAsync(
@@ -127,14 +198,12 @@ export default function ItemDetailScreen() {
           }
         }
 
-        // Share the image using expo-sharing
         await Sharing.shareAsync(imageUri, {
           mimeType: "image/jpeg",
           dialogTitle: item?.title || t("common.untitled" as any),
           UTI: "public.jpeg", // iOS only
         });
 
-        // Clean up the temporary file if we downloaded it
         if (item.imageUrl.startsWith("http")) {
           try {
             await FileSystem.deleteAsync(imageUri);
@@ -143,7 +212,6 @@ export default function ItemDetailScreen() {
           }
         }
       } else {
-        // For other types, share the URL and text
         const shareContent = {
           title: item?.title || t("common.untitled" as any),
           message: `${item?.title || t("common.untitled" as any)}\n\n${
@@ -161,7 +229,7 @@ export default function ItemDetailScreen() {
         type: "error",
         text1: t("common.error" as any),
         text2: t("common.shareError" as any),
-        position: "bottom",
+        position: "top",
         visibilityTime: 1000,
       });
     }
@@ -183,7 +251,7 @@ export default function ItemDetailScreen() {
           type === "url"
             ? t("common.urlCopied" as any)
             : t("common.descriptionCopied" as any),
-        position: "bottom",
+        position: "top",
         visibilityTime: 1500,
       });
     } catch (error) {
@@ -191,7 +259,7 @@ export default function ItemDetailScreen() {
         type: "error",
         text1: t("common.error" as any),
         text2: t("common.copyError" as any),
-        position: "bottom",
+        position: "top",
         visibilityTime: 1000,
       });
     }
@@ -228,6 +296,35 @@ export default function ItemDetailScreen() {
     }
   };
 
+  const handleFavorite = () => {
+    if (!item) return;
+    const isFav = item.isFavorite;
+
+    const updatedItem = {
+      ...item,
+      isFavorite: !isFav,
+    };
+
+    updateItem(updatedItem.id!, updatedItem);
+    setItem(updatedItem);
+
+    Haptics.impactAsync(
+      isFav
+        ? Haptics.ImpactFeedbackStyle.Light
+        : Haptics.ImpactFeedbackStyle.Medium
+    );
+
+    // Show toast
+    Toast.show({
+      type: "success",
+      text1: isFav
+        ? t("common.removedFromFavorites" as any)
+        : t("common.addedToFavorites" as any),
+      position: "top",
+      visibilityTime: 1500,
+    });
+  };
+
   if (!item) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -256,96 +353,339 @@ export default function ItemDetailScreen() {
     }
   };
 
+  // Determine gradient colors based on platform result
+  const getGradientColors = (): ColorValue[] => {
+    if (!imageColors) return [colors.background, colors.background];
+
+    if (imageColors.platform === "ios") {
+      if (imageColors.primary && imageColors.background) {
+        return [imageColors.primary, imageColors.background];
+      } else if (imageColors.background) {
+        return [colors.background, imageColors.background];
+      }
+    } else if (imageColors.platform === "android") {
+      if (imageColors.dominant && imageColors.average) {
+        return [imageColors.dominant, imageColors.average];
+      } else if (imageColors.dominant) {
+        return [imageColors.dominant, colors.background];
+      } else if (imageColors.average) {
+        return [imageColors.average, colors.background];
+      }
+    } else if (imageColors.platform === "web") {
+      if (imageColors.dominant) {
+        return [imageColors.dominant, colors.background];
+      } else if (imageColors.vibrant) {
+        return [imageColors.vibrant, colors.background];
+      } else if (imageColors.lightVibrant) {
+        return [imageColors.lightVibrant, colors.background];
+      }
+    }
+
+    return [colors.background, colors.background];
+  };
+
   const renderContent = () => {
     if (isEditing) {
       return renderForm();
     }
 
     const images = item.imageUrl ? [item.imageUrl] : [];
+    const gradientColors = getGradientColors();
+
+    // Determine text color based on the primary gradient color
+    const primaryGradientColor = gradientColors[0] as string; // Assuming the first color is representative
+    const textColor = isColorLight(primaryGradientColor)
+      ? "#000000"
+      : colors.text; // Use black for light background, theme text color for dark
+    const textSecondaryColor = isColorLight(primaryGradientColor)
+      ? "#333333"
+      : colors.textSecondary; // Use dark grey for light background, theme text secondary for dark
 
     return (
       <>
         <ScrollView style={styles.scrollView}>
-          <View style={styles.content}>
+          <View style={styles.contentContainer}>
+            {/* Image Section */}
             <View style={styles.imageContainer}>
-              {item.imageUrl ? (
-                <TouchableOpacity
-                  onPress={() => {
+              <TouchableOpacity
+                onPress={() => {
+                  if (item.imageUrl) {
                     setIsImageViewVisible(true);
                     setImageViewIndex(0);
-                  }}
-                  activeOpacity={0.9}
-                >
-                  <Image
-                    source={{ uri: item.imageUrl }}
-                    style={styles.image}
-                    contentFit="cover"
-                    placeholder={null}
-                    transition={200}
-                  />
-                </TouchableOpacity>
-              ) : item.url ? (
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }
+                }}
+                activeOpacity={0.9}
+              >
                 <Image
-                  source={imagePreview || undefined}
-                  style={[styles.image]}
+                  source={{ uri: item.imageUrl || imagePreview }}
+                  style={styles.heroImage}
                   contentFit="cover"
                   placeholder={null}
-                  transition={200}
+                  transition={300}
                 />
-              ) : null}
+                <LinearGradient
+                  colors={["transparent", "rgba(0,0,0,0.8)"]}
+                  style={styles.imageOverlay}
+                >
+                  {item.url && (
+                    <View style={styles.sourceContainer}>
+                      <Feather
+                        name="download"
+                        size={14}
+                        color="rgba(255,255,255,0.8)"
+                      />
+                      <Text style={styles.sourceText}>{item.url}</Text>
+                    </View>
+                  )}
+                  {item.category && (
+                    <View style={styles.categoryTopRightContainer}>
+                      <Feather name="folder" size={14} color="#FFFFFF" />
+                      <Text style={styles.categoryTopRightText}>
+                        {item.category}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={styles.imageTitle}>
+                    {item.title || t("common.untitled" as any)}
+                  </Text>
+                  {/* {item.description && (
+                    <Text style={styles.imageSubtitle}>{item.description}</Text>
+                  )} */}
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
 
-            <Text style={[styles.title, { color: colors.text }]}>
-              {item.title || t("common.untitled" as any)}
-            </Text>
-
-            {item.url && (
-              <View style={styles.urlContainer}>
-                <TouchableOpacity
-                  style={styles.urlButton}
-                  onPress={handleOpenUrl}
+            <LinearGradient
+              colors={gradientColors as any}
+              style={styles.content}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+            >
+              {/* Description Card */}
+              {item.description && (
+                <View
+                  style={[styles.card, { backgroundColor: `${colors.card}B3` }]}
                 >
-                  <Text style={[styles.url, { color: colors.accent }]}>
-                    {ensureHttps(item.url)}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {item.description && (
-              <View style={styles.descriptionContainer}>
-                <Text
-                  style={[styles.description, { color: colors.textSecondary }]}
-                >
-                  {item.description}
-                </Text>
-                <TouchableOpacity
-                  style={styles.copyButton}
-                  onPress={() =>
-                    handleCopyToClipboard(item.description, "description")
-                  }
-                >
-                  <Feather name="copy" size={16} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {item.tags && item.tags.length > 0 && (
-              <View style={styles.tagsList}>
-                {item.tags.map((tag) => (
-                  <View
-                    key={tag}
-                    style={[styles.tag, { backgroundColor: colors.card }]}
-                  >
-                    <Text style={[styles.tagText, { color: colors.text }]}>
-                      #{tag}
+                  <View style={styles.cardHeader}>
+                    <Text style={[styles.cardTitle, { color: textColor }]}>
+                      {t("common.description" as any)}
                     </Text>
+                    <TouchableOpacity
+                      onPress={() =>
+                        handleCopyToClipboard(item.description, "description")
+                      }
+                    >
+                      <Feather
+                        name="copy"
+                        size={16}
+                        color={textSecondaryColor}
+                      />
+                    </TouchableOpacity>
                   </View>
-                ))}
-              </View>
-            )}
+                  <Text
+                    style={[styles.cardText, { color: textSecondaryColor }]}
+                  >
+                    {item.description}
+                  </Text>
+                </View>
+              )}
+
+              {/* URL Card */}
+              {item.url && (
+                <View
+                  style={[styles.card, { backgroundColor: `${colors.card}B3` }]}
+                >
+                  <View style={styles.cardHeader}>
+                    <Text style={[styles.cardTitle, { color: textColor }]}>
+                      {t("common.source" as any)}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => handleCopyToClipboard(item.url, "url")}
+                    >
+                      <Feather
+                        name="copy"
+                        size={16}
+                        color={textSecondaryColor}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  <TouchableOpacity onPress={handleOpenUrl}>
+                    <Text style={[styles.urlText, { color: textColor }]}>
+                      {ensureHttps(item.url)}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Tags Section */}
+              {item.tags && item.tags.length > 0 && (
+                <View style={styles.tagsSection}>
+                  <Text style={[styles.tagsSectionTitle, { color: textColor }]}>
+                    {t("common.tags" as any)}
+                  </Text>
+                  <View style={styles.tagsList}>
+                    {item.tags.map((tag) => (
+                      <View
+                        key={tag}
+                        style={[
+                          styles.tag,
+                          { backgroundColor: `${colors.card}B3` },
+                        ]}
+                      >
+                        <Text style={[styles.tagText, { color: textColor }]}>
+                          #{tag}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </LinearGradient>
           </View>
         </ScrollView>
+
+        {/* Bottom Action Bar */}
+        {!isEditing && ( // Show bottom bar only when not editing
+          <BlurView
+            intensity={80}
+            tint={isDark ? "dark" : "light"}
+            style={styles.bottomBar}
+          >
+            {item?.url && (
+              <TouchableOpacity
+                style={styles.bottomAction}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  handleCopyToClipboard(item.url, "url");
+                }}
+              >
+                <View style={styles.bottomIconContainer}>
+                  <Feather
+                    name="copy"
+                    size={20}
+                    color={
+                      isColorLight(containerBackgroundColor)
+                        ? "#000000"
+                        : "#FFFFFF"
+                    }
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.bottomActionText,
+                    {
+                      color: isColorLight(containerBackgroundColor)
+                        ? "#000000"
+                        : colors.textSecondary,
+                    },
+                  ]}
+                >
+                  {t("common.urlCopied" as any)}
+                </Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.bottomAction}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                Toast.show({
+                  type: "info",
+                  text1: t("common.downloading" as any),
+                  position: "bottom",
+                  visibilityTime: 1500,
+                });
+              }}
+            >
+              <View style={styles.bottomIconContainer}>
+                <Feather
+                  name="download"
+                  size={20}
+                  color={
+                    isColorLight(containerBackgroundColor)
+                      ? "#000000"
+                      : "#FFFFFF"
+                  }
+                />
+              </View>
+              <Text
+                style={[
+                  styles.bottomActionText,
+                  {
+                    color: isColorLight(containerBackgroundColor)
+                      ? "#000000"
+                      : colors.textSecondary,
+                  },
+                ]}
+              >
+                {t("actions.save" as any)}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.bottomAction}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                handleShare();
+              }}
+            >
+              <View style={styles.bottomIconContainer}>
+                <Feather
+                  name="share-2"
+                  size={20}
+                  color={
+                    isColorLight(containerBackgroundColor)
+                      ? "#000000"
+                      : "#FFFFFF"
+                  }
+                />
+              </View>
+              <Text
+                style={[
+                  styles.bottomActionText,
+                  {
+                    color: isColorLight(containerBackgroundColor)
+                      ? "#000000"
+                      : colors.textSecondary,
+                  },
+                ]}
+              >
+                {t("actions.share" as any)}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.bottomAction}
+              onPress={handleFavorite}
+            >
+              <View style={styles.bottomIconContainer}>
+                <Feather
+                  name={item.isFavorite ? "heart" : "heart"}
+                  size={20}
+                  color={
+                    item.isFavorite
+                      ? colors.accent
+                      : isColorLight(containerBackgroundColor)
+                      ? "#000000"
+                      : "#FFFFFF"
+                  }
+                />
+              </View>
+              <Text
+                style={[
+                  styles.bottomActionText,
+                  {
+                    color: isColorLight(containerBackgroundColor)
+                      ? "#000000"
+                      : colors.textSecondary,
+                  },
+                ]}
+              >
+                {t("actions.favorite" as any)}
+              </Text>
+            </TouchableOpacity>
+          </BlurView>
+        )}
 
         <ImageView
           images={images.map((url) => ({ uri: url }))}
@@ -364,7 +704,7 @@ export default function ItemDetailScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: containerBackgroundColor }]}
     >
       {!isEditing && (
         <View style={styles.header}>
@@ -372,7 +712,13 @@ export default function ItemDetailScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Feather name="arrow-left" size={24} color={colors.text} />
+            <Feather
+              name="arrow-left"
+              size={24}
+              color={
+                isColorLight(containerBackgroundColor) ? "#000000" : "#FFFFFF"
+              }
+            />
           </TouchableOpacity>
           <View style={styles.headerActions}>
             <TouchableOpacity
@@ -382,36 +728,28 @@ export default function ItemDetailScreen() {
                 setIsEditing(true);
               }}
             >
-              <Feather name="edit" size={24} color={colors.text} />
-            </TouchableOpacity>
-            {item?.url && (
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  handleCopyToClipboard(item.url, "url");
-                }}
-              >
-                <Feather name="copy" size={24} color={colors.text} />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                handleShare();
-              }}
-            >
-              <Feather name="share-2" size={24} color={colors.text} />
+              <Feather
+                name="edit-2"
+                size={22}
+                color={
+                  isColorLight(containerBackgroundColor) ? "#000000" : "#FFFFFF"
+                }
+              />
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.actionButton}
+              style={[styles.actionButton, styles.deleteButton]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
                 setShowDeleteConfirm(true);
               }}
             >
-              <Feather name="trash-2" size={24} color={colors.text} />
+              <Feather
+                name="trash-2"
+                size={22}
+                color={
+                  isColorLight(containerBackgroundColor) ? "#000000" : "#FFFFFF"
+                }
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -463,6 +801,9 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  contentContainer: {
+    flexGrow: 1,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -470,67 +811,137 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 16,
+    zIndex: 10,
   },
   backButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerActions: {
     flexDirection: "row",
     gap: 12,
   },
   actionButton: {
-    padding: 8,
-    borderRadius: 8,
-  },
-  content: {
-    padding: 16,
-  },
-  image: {
-    width: "100%",
-    height: 200,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  url: {
-    fontSize: 16,
-    marginBottom: 16,
-    textDecorationLine: "underline",
-  },
-  description: {
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 16,
-  },
-  tagsContainer: {
-    marginTop: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  tagInputContainer: {
-    flexDirection: "row",
-    marginBottom: 12,
-  },
-  tagInput: {
-    flex: 1,
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    marginRight: 8,
-  },
-  addTagButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.1)",
     justifyContent: "center",
+    alignItems: "center",
+  },
+  deleteButton: {
+    backgroundColor: "rgba(255,59,48,0.1)",
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 100, // Extra padding for bottom bar
+  },
+  imageContainer: {
+    position: "relative",
+    width: "100%",
+    // marginBottom: 16,
+  },
+  heroImage: {
+    width: "100%",
+    height: 300,
+  },
+  imageOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+  },
+  sourceContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  sourceText: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+  },
+  imageTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 4,
+    textShadowColor: "rgba(0, 0, 0, 0.75)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  imageSubtitle: {
+    fontSize: 16,
+    color: "rgba(255,255,255,0.9)",
+    textShadowColor: "rgba(0, 0, 0, 0.75)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  categoryOverlayContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 6,
+  },
+  categoryOverlayText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.8)",
+  },
+  categoryTopRightContainer: {
+    position: "absolute",
+    top: 16, // Adjust spacing from top
+    right: 16, // Adjust spacing from right
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)", // Semi-transparent background
+    borderRadius: 16,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    gap: 4,
+    zIndex: 1, // Ensure it's above the image
+  },
+  categoryTopRightText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#FFFFFF", // White text
+  },
+  card: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  cardText: {
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  urlText: {
+    fontSize: 16,
+    textDecorationLine: "underline",
+  },
+  tagsSection: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  tagsSectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 12,
   },
   tagsList: {
     flexDirection: "row",
@@ -538,15 +949,50 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tag: {
-    flexDirection: "row",
-    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    gap: 4,
   },
   tagText: {
     fontSize: 14,
+    fontWeight: "500",
+  },
+  bottomBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: 12,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  bottomAction: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 8,
+  },
+  bottomIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  bottomActionText: {
+    fontSize: 12,
     fontWeight: "500",
   },
   modal: {
@@ -601,91 +1047,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     marginTop: 60,
-  },
-  urlContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    borderRadius: 8,
-    padding: 8,
-  },
-  urlButton: {
-    flex: 1,
-  },
-  descriptionContainer: {
-    position: "relative",
-    marginBottom: 16,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    borderRadius: 8,
-    padding: 12,
-  },
-  copyButton: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    padding: 4,
-  },
-  imageContainer: {
-    position: "relative",
-    marginBottom: 16,
-  },
-  previewContainer: {
-    marginBottom: 16,
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: "rgba(0,0,0,0.05)",
-    aspectRatio: 16 / 9,
-  },
-  previewImage: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "transparent",
-  },
-  loadingContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-    minHeight: 200,
-  },
-  loadingText: {
-    fontSize: 16,
-    textAlign: "center",
-  },
-  removeImageButton: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  imageInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-    gap: 8,
-  },
-  imageUrlInput: {
-    flex: 1,
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.05)",
-  },
-  clearImageButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
   },
 });

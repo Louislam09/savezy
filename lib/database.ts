@@ -20,10 +20,11 @@ export type ContentItem = {
   category?: string;
   tags?: string[];
   created?: string;
+  isFavorite?: boolean;
 };
 
 export async function initDatabase(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 1;
+  const DATABASE_VERSION = 2;
   const versionResult = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version"
   );
@@ -53,6 +54,13 @@ export async function initDatabase(db: SQLiteDatabase) {
     currentDbVersion = 1;
   }
 
+  if (currentDbVersion === 1) {
+    await db.execAsync(`
+      ALTER TABLE contents ADD COLUMN isFavorite INTEGER DEFAULT 0;
+    `);
+    currentDbVersion = 2;
+  }
+
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
 }
 
@@ -60,35 +68,60 @@ export async function saveContent(
   db: SQLiteDatabase,
   content: ContentItem
 ): Promise<ContentItem> {
-  const result = await db.runAsync(
-    `INSERT INTO contents (type, url, title, imageUrl, description, summary, comment, category, tags)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      content.type,
-      content.url || null,
-      content.title || null,
-      content.imageUrl || null,
-      content.description || null,
-      content.summary || null,
-      content.comment || null,
-      content.category || null,
-      content.tags ? JSON.stringify(content.tags) : null,
-    ]
-  );
+  if (content.id) {
+    await db.runAsync(
+      `UPDATE contents SET type = ?, url = ?, title = ?, imageUrl = ?, description = ?, summary = ?, comment = ?, category = ?, tags = ?, isFavorite = ? WHERE id = ?`,
+      [
+        content.type,
+        content.url || null,
+        content.title || null,
+        content.imageUrl || null,
+        content.description || null,
+        content.summary || null,
+        content.comment || null,
+        content.category || null,
+        content.tags ? JSON.stringify(content.tags) : null,
+        content.isFavorite ? 1 : 0,
+        content.id,
+      ]
+    );
+    return content;
+  } else {
+    const result = await db.runAsync(
+      `INSERT INTO contents (type, url, title, imageUrl, description, summary, comment, category, tags, isFavorite)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        content.type,
+        content.url || null,
+        content.title || null,
+        content.imageUrl || null,
+        content.description || null,
+        content.summary || null,
+        content.comment || null,
+        content.category || null,
+        content.tags ? JSON.stringify(content.tags) : null,
+        content.isFavorite ? 1 : 0,
+      ]
+    );
 
-  return { ...content, id: result.lastInsertRowId };
+    return { ...content, id: result.lastInsertRowId };
+  }
 }
 
 export async function getAllContents(
   db: SQLiteDatabase
 ): Promise<ContentItem[]> {
-  const items = await db.getAllAsync<ContentItem & { tags: string }>(
-    "SELECT * FROM contents ORDER BY created DESC"
-  );
+  const items = await db.getAllAsync<
+    Omit<ContentItem, "tags" | "isFavorite"> & {
+      tags: string;
+      isFavorite: number;
+    }
+  >("SELECT * FROM contents ORDER BY created DESC");
 
   return items.map((item) => ({
     ...item,
     tags: item.tags ? JSON.parse(item.tags) : [],
+    isFavorite: item.isFavorite === 1,
   }));
 }
 

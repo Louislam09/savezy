@@ -25,16 +25,16 @@ export type ThemeColors = {
 };
 const defaultMainColor = "#60A5FA";
 export const lightTheme: ThemeColors = {
-  background: "#FFFFFF",
+  background: "#FAFAFA",
   card: "#FFFFFF",
-  cardBorder: "#E5E5EA",
-  text: "#000000",
-  textSecondary: "#8E8E93",
-  accent: "#0A84FF",
-  buttonBackground: "#F2F2F7",
-  searchBackground: "#F2F2F7",
-  error: "#FF3B30",
-  mainColor: defaultMainColor,
+  cardBorder: "#E0E0E0",
+  text: "#1A1A1A",
+  textSecondary: "#666666",
+  accent: "#2563EB",
+  buttonBackground: "#F3F4F6",
+  searchBackground: "#FFFFFF",
+  error: "#DC2626",
+  mainColor: "#2563EB",
 };
 export const darkTheme: ThemeColors = {
   background: "#000000",

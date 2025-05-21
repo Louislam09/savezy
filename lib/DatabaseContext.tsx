@@ -49,8 +49,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const saveItem = async (content: ContentItem): Promise<ContentItem> => {
     try {
       const result = await db.runAsync(
-        `INSERT INTO contents (type, url, title, imageUrl, description, summary, comment, category, tags)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO contents (type, url, title, imageUrl, description, summary, comment, category, tags, isFavorite)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           content.type,
           content.url || null,
@@ -61,6 +61,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           content.comment || null,
           content.category || null,
           content.tags ? JSON.stringify(content.tags) : null,
+          content.isFavorite ? 1 : 0,
         ]
       );
 
@@ -70,19 +71,6 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       const error =
         err instanceof Error ? err : new Error("Failed to save item");
-      setError(error);
-      throw error;
-    }
-  };
-
-  const deleteItem = async (id: number): Promise<void> => {
-    try {
-      await db.runAsync("DELETE FROM contents WHERE id = ?", [id]);
-      setItems((prev) => prev.filter((item) => item.id !== id));
-      setError(null);
-    } catch (err) {
-      const error =
-        err instanceof Error ? err : new Error("Failed to delete item");
       setError(error);
       throw error;
     }
@@ -102,7 +90,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       await db.runAsync(
         `UPDATE contents 
          SET type = ?, url = ?, title = ?, imageUrl = ?, description = ?, 
-             summary = ?, comment = ?, category = ?, tags = ?
+             summary = ?, comment = ?, category = ?, tags = ?, isFavorite = ?
          WHERE id = ?`,
         [
           updatedItem.type,
@@ -114,6 +102,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           updatedItem.comment || null,
           updatedItem.category || null,
           updatedItem.tags ? JSON.stringify(updatedItem.tags) : null,
+          updatedItem.isFavorite ? 1 : 0,
           id,
         ]
       );
@@ -126,6 +115,19 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       const error =
         err instanceof Error ? err : new Error("Failed to update item");
+      setError(error);
+      throw error;
+    }
+  };
+
+  const deleteItem = async (id: number): Promise<void> => {
+    try {
+      await db.runAsync("DELETE FROM contents WHERE id = ?", [id]);
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      setError(null);
+    } catch (err) {
+      const error =
+        err instanceof Error ? err : new Error("Failed to delete item");
       setError(error);
       throw error;
     }
