@@ -198,8 +198,8 @@ const AnimatedCard = ({
       useNativeDriver: true,
     }).start();
 
-    // Set preview URL
-    if (item.url && item.id) {
+    // Set preview URL for non-direction items
+    if (item.type !== ContentType.DIRECTION && item.url && item.id) {
       const httpsUrl = ensureHttps(item.url);
       if (httpsUrl) {
         setPreviewUrl(
@@ -270,6 +270,60 @@ const AnimatedCard = ({
     );
   };
 
+  const renderImage = () => {
+    if (item.type === ContentType.DIRECTION) {
+      if (item.latitude && item.longitude) {
+        // Generate static map image URL using OpenStreetMap static map service
+        const mapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${item.latitude},${item.longitude}&zoom=14&size=600x300&markers=${item.latitude},${item.longitude},red`;
+        return (
+          <Image
+            source={mapUrl}
+            style={[styles.itemImage, { height: isGridView ? 120 : 200 }]}
+            contentFit="cover"
+            placeholder={null}
+            transition={200}
+          />
+        );
+      } else {
+        // Fallback icon for direction without coordinates
+        return (
+          <View
+            style={[
+              styles.directionFallback,
+              { backgroundColor: colors.cardBorder },
+            ]}
+          >
+            <Feather name="map-pin" size={32} color={colors.textSecondary} />
+          </View>
+        );
+      }
+    }
+
+    // Handle other content types
+    if (item.url) {
+      return (
+        <Image
+          source={previewUrl || undefined}
+          style={[styles.itemImage, { height: isGridView ? 120 : 200 }]}
+          contentFit="cover"
+          placeholder={null}
+          transition={200}
+        />
+      );
+    } else if (item.imageUrl) {
+      return (
+        <Image
+          source={item.imageUrl}
+          style={[styles.itemImage, { height: isGridView ? 120 : 200 }]}
+          contentFit="cover"
+          placeholder={null}
+          transition={200}
+        />
+      );
+    }
+    return null;
+  };
+
   return (
     <Animated.View
       style={[
@@ -314,23 +368,7 @@ const AnimatedCard = ({
           </Text>
         </View>
 
-        {item.url ? (
-          <Image
-            source={previewUrl || undefined}
-            style={[styles.itemImage, { height: isGridView ? 120 : 200 }]}
-            contentFit="cover"
-            placeholder={null}
-            transition={200}
-          />
-        ) : item.imageUrl ? (
-          <Image
-            source={item.imageUrl}
-            style={[styles.itemImage, { height: isGridView ? 120 : 200 }]}
-            contentFit="cover"
-            placeholder={null}
-            transition={200}
-          />
-        ) : null}
+        {renderImage()}
 
         <View style={[styles.itemContent, { padding: isGridView ? 12 : 20 }]}>
           <Text
@@ -347,7 +385,18 @@ const AnimatedCard = ({
             {item.title || "Untitled"}
           </Text>
 
-          {item.url && (
+          {item.type === ContentType.DIRECTION &&
+            item.latitude &&
+            item.longitude && (
+              <Text
+                style={[styles.itemUrl, { color: colors.textSecondary }]}
+                numberOfLines={1}
+              >
+                {item.latitude.toFixed(6)}, {item.longitude.toFixed(6)}
+              </Text>
+            )}
+
+          {item.url && item.type !== ContentType.DIRECTION && (
             <Text
               style={[styles.itemUrl, { color: colors.textSecondary }]}
               numberOfLines={1}
@@ -918,5 +967,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 8,
     opacity: 0.8,
+  },
+  directionFallback: {
+    width: "100%",
+    height: 200,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E5E5EA",
   },
 });

@@ -21,6 +21,7 @@ import {
 } from "react-native";
 import { getColors, ImageColorsResult } from "react-native-image-colors";
 import ImageView from "react-native-image-viewing";
+import { WebView } from "react-native-webview";
 import { Toast } from "toastify-react-native";
 import { useDatabase } from "../../lib/DatabaseContext";
 import { useLanguage } from "../../lib/LanguageContext";
@@ -400,67 +401,111 @@ export default function ItemDetailScreen() {
     const gradientColors = getGradientColors();
 
     // Determine text color based on the primary gradient color
-    const primaryGradientColor = gradientColors[0] as string; // Assuming the first color is representative
+    const primaryGradientColor = gradientColors[0] as string;
     const textColor = isColorLight(primaryGradientColor)
       ? "#000000"
-      : colors.text; // Use black for light background, theme text color for dark
+      : colors.text;
     const textSecondaryColor = isColorLight(primaryGradientColor)
       ? "#333333"
-      : colors.textSecondary; // Use dark grey for light background, theme text secondary for dark
+      : colors.textSecondary;
+
+    // Map HTML for direction type
+    const mapHtml =
+      item.type === ContentType.DIRECTION && item.latitude && item.longitude
+        ? `
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+          <style>
+              body { margin: 0; padding: 0; }
+              #map { width: 100%; height: 300px; }
+          </style>
+      </head>
+      <body>
+          <div id="map"></div>
+          <script>
+              const map = L.map('map').setView([${item.latitude}, ${item.longitude}], 13);
+              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                  attribution: '© OpenStreetMap contributors'
+              }).addTo(map);
+
+              L.marker([${item.latitude}, ${item.longitude}]).addTo(map);
+              L.circle([${item.latitude}, ${item.longitude}], {
+                  color: 'red',
+                  fillColor: '#f03',
+                  fillOpacity: 0.1,
+                  radius: 500
+              }).addTo(map);
+          </script>
+      </body>
+      </html>
+    `
+        : "";
 
     return (
       <>
         <ScrollView style={styles.scrollView}>
           <View style={styles.contentContainer}>
-            {/* Image Section */}
+            {/* Image or Map Section */}
             <View style={styles.imageContainer}>
-              <TouchableOpacity
-                onPress={() => {
-                  if (item.imageUrl) {
-                    setIsImageViewVisible(true);
-                    setImageViewIndex(0);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }
-                }}
-                activeOpacity={0.9}
-              >
-                <Image
-                  source={{ uri: item.imageUrl || imagePreview }}
+              {item.type === ContentType.DIRECTION &&
+              item.latitude &&
+              item.longitude ? (
+                <WebView
+                  source={{ html: mapHtml }}
                   style={styles.heroImage}
-                  contentFit="cover"
-                  placeholder={null}
-                  transition={300}
+                  scrollEnabled={false}
+                  zoomEnabled={false}
                 />
-                <LinearGradient
-                  colors={["transparent", "rgba(0,0,0,0.8)"]}
-                  style={styles.imageOverlay}
+              ) : (
+                <TouchableOpacity
+                  onPress={() => {
+                    if (item.imageUrl) {
+                      setIsImageViewVisible(true);
+                      setImageViewIndex(0);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }
+                  }}
+                  activeOpacity={0.9}
                 >
-                  {item.url && (
-                    <View style={styles.sourceContainer}>
-                      <Feather
-                        name="download"
-                        size={14}
-                        color="rgba(255,255,255,0.8)"
-                      />
-                      <Text style={styles.sourceText}>{item.url}</Text>
-                    </View>
-                  )}
-                  {item.category && (
-                    <View style={styles.categoryTopRightContainer}>
-                      <Feather name="folder" size={14} color="#FFFFFF" />
-                      <Text style={styles.categoryTopRightText}>
-                        {item.category}
-                      </Text>
-                    </View>
-                  )}
-                  <Text style={styles.imageTitle}>
-                    {item.title || t("common.untitled" as any)}
-                  </Text>
-                  {/* {item.description && (
-                    <Text style={styles.imageSubtitle}>{item.description}</Text>
-                  )} */}
-                </LinearGradient>
-              </TouchableOpacity>
+                  <Image
+                    source={{ uri: item.imageUrl || imagePreview }}
+                    style={styles.heroImage}
+                    contentFit="cover"
+                    placeholder={null}
+                    transition={300}
+                  />
+                  <LinearGradient
+                    colors={["transparent", "rgba(0,0,0,0.8)"]}
+                    style={styles.imageOverlay}
+                  >
+                    {item.url && (
+                      <View style={styles.sourceContainer}>
+                        <Feather
+                          name="download"
+                          size={14}
+                          color="rgba(255,255,255,0.8)"
+                        />
+                        <Text style={styles.sourceText}>{item.url}</Text>
+                      </View>
+                    )}
+                    {item.category && (
+                      <View style={styles.categoryTopRightContainer}>
+                        <Feather name="folder" size={14} color="#FFFFFF" />
+                        <Text style={styles.categoryTopRightText}>
+                          {item.category}
+                        </Text>
+                      </View>
+                    )}
+                    <Text style={styles.imageTitle}>
+                      {item.title || t("common.untitled" as any)}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
             </View>
 
             <LinearGradient
@@ -469,6 +514,35 @@ export default function ItemDetailScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
             >
+              {/* Directions Card for Direction type */}
+              {item.type === ContentType.DIRECTION && item.directions && (
+                <View
+                  style={[styles.card, { backgroundColor: `${colors.card}B3` }]}
+                >
+                  <View style={styles.cardHeader}>
+                    <Text style={[styles.cardTitle, { color: textColor }]}>
+                      {t("common.directions" as any)}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() =>
+                        handleCopyToClipboard(item.directions, "description")
+                      }
+                    >
+                      <Feather
+                        name="copy"
+                        size={16}
+                        color={textSecondaryColor}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  <Text
+                    style={[styles.cardText, { color: textSecondaryColor }]}
+                  >
+                    {item.directions}
+                  </Text>
+                </View>
+              )}
+
               {/* Description Card */}
               {item.description && (
                 <View
