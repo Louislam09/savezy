@@ -117,6 +117,14 @@ export const translations = {
       invalidLatitude: "Invalid latitude value",
       invalidLongitude: "Invalid longitude value",
       directionsRequired: "Directions are required",
+      searchLocation: "Search for a location...",
+      searchLocationError: "Failed to search location",
+      noSearchResults: "No locations found",
+      searchLocationRequired: "Please enter a location to search",
+    },
+    errors: {
+      titleRequired: "Title is required",
+      failedToSave: "Failed to save item",
     },
     alerts: {
       deleteConfirm: "Are you sure you want to delete this item?",
@@ -253,6 +261,14 @@ export const translations = {
       invalidLatitude: "Valor de latitud inválido",
       invalidLongitude: "Valor de longitud inválido",
       directionsRequired: "Las direcciones son requeridas",
+      searchLocation: "Buscar una ubicación...",
+      searchLocationError: "Error al buscar la ubicación",
+      noSearchResults: "No se encontraron ubicaciones",
+      searchLocationRequired: "Por favor ingrese una ubicación para buscar",
+    },
+    errors: {
+      titleRequired: "El título es requerido",
+      failedToSave: "Error al guardar el elemento",
     },
     alerts: {
       deleteConfirm: "¿Estás seguro de que quieres eliminar este elemento?",
