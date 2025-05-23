@@ -666,42 +666,6 @@ export default function ItemDetailScreen() {
                 </Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              style={styles.bottomAction}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                Toast.show({
-                  type: "info",
-                  text1: t("common.downloading" as any),
-                  position: "bottom",
-                  visibilityTime: 1500,
-                });
-              }}
-            >
-              <View style={styles.bottomIconContainer}>
-                <Feather
-                  name="download"
-                  size={20}
-                  color={
-                    isColorLight(containerBackgroundColor)
-                      ? "#000000"
-                      : "#FFFFFF"
-                  }
-                />
-              </View>
-              <Text
-                style={[
-                  styles.bottomActionText,
-                  {
-                    color: isColorLight(containerBackgroundColor)
-                      ? "#000000"
-                      : colors.textSecondary,
-                  },
-                ]}
-              >
-                {t("actions.save" as any)}
-              </Text>
-            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.bottomAction}
